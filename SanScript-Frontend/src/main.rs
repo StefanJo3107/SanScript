@@ -1,7 +1,9 @@
+use san_vm::VM;
 use sanscript_common::{
     chunk::{Chunk, OpCode},
     debug::disassemble_chunk,
 };
+
 pub mod runner;
 
 fn main() {
@@ -12,5 +14,7 @@ fn main() {
     const_offset = chunk.add_constant(2.4);
     chunk.write_chunk(OpCode::OpConstant(const_offset), 124);
     chunk.write_chunk(OpCode::OpReturn, 125);
+    let mut vm = VM::new(&chunk);
+    vm.interpret();
     disassemble_chunk(&chunk, "TEST CHUNK");
 }
