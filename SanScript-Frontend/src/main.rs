@@ -13,6 +13,7 @@ fn main() {
     chunk.write_chunk(OpCode::OpConstant(const_offset), 123);
     const_offset = chunk.add_constant(2.4);
     chunk.write_chunk(OpCode::OpConstant(const_offset), 124);
+    chunk.write_chunk(OpCode::OpNegate, 124);
     chunk.write_chunk(OpCode::OpReturn, 125);
     let mut vm = VM::new(&chunk);
     vm.interpret("TEST CHUNK");

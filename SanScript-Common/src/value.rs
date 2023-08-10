@@ -21,7 +21,7 @@ impl ValueArray{
         self.values.push(value);
     }
 
-    pub fn print_value(value: &Value){
+    pub fn print_value(value: Value){
         print!("\x1B[3m{}\x1B[0m", value);
     }
 }

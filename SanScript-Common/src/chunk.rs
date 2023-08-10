@@ -5,14 +5,16 @@ use core::fmt;
 #[repr(u8)]
 pub enum OpCode {
     OpReturn,
-    OpConstant(usize)
+    OpConstant(usize),
+    OpNegate
 }
 
 impl fmt::Display for OpCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             OpCode::OpReturn => write!(f, "OP_RETURN"),
-            OpCode::OpConstant(_) => write!(f, "OP_CONSTANT")
+            OpCode::OpConstant(_) => write!(f, "OP_CONSTANT"),
+            OpCode::OpNegate => write!(f, "OP_NEGATE")
         }
     }
 }

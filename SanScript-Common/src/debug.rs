@@ -33,6 +33,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
     match instruction {
         OpCode::OpReturn => simple_instruction(instruction, print_offset),
         OpCode::OpConstant(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
+        OpCode::OpNegate => simple_instruction(instruction, print_offset),
         _ => {
             println!("Unknown opcode: {}", instruction);
             offset+1
@@ -50,7 +51,7 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
         //printing instruction name with its operand index
         print!(" {:<16} {:>4} '", opcode, index);
         //printing operand value
-        ValueArray::print_value(value);
+        ValueArray::print_value(*value);
         println!("'");
         offset + 2
     }else{
