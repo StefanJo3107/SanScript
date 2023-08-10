@@ -21,7 +21,7 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     }
 }
 
-fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize) -> usize{
+pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize) -> usize{
     //printing line number in a source code
     if offset>0 && chunk.get_line(offset) == chunk.get_line(offset-1){
         print!("  -||-  |");

@@ -15,6 +15,6 @@ fn main() {
     chunk.write_chunk(OpCode::OpConstant(const_offset), 124);
     chunk.write_chunk(OpCode::OpReturn, 125);
     let mut vm = VM::new(&chunk);
-    vm.interpret();
-    disassemble_chunk(&chunk, "TEST CHUNK");
+    vm.interpret("TEST CHUNK");
+    // disassemble_chunk(&chunk, "TEST CHUNK");
 }
