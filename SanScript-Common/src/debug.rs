@@ -17,26 +17,25 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
         print!("{:0>4} |", print_offset);
 
         print_offset = disassemble_instruction(chunk, offset, print_offset);
-        offset+=1;
+        offset += 1;
     }
 }
 
-pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize) -> usize{
+pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize) -> usize {
     //printing line number in a source code
-    if offset>0 && chunk.get_line(offset) == chunk.get_line(offset-1){
+    if offset > 0 && chunk.get_line(offset) == chunk.get_line(offset - 1) {
         print!("  -||-  |");
-    }else{
+    } else {
         print!(" {: ^6} |", chunk.get_line(offset));
     }
 
     let instruction = chunk.get_code(offset);
     match instruction {
-        OpCode::OpReturn => simple_instruction(instruction, print_offset),
+        OpCode::OpReturn | OpCode::OpNegate | OpCode::OpAdd | OpCode::OpSubtract | OpCode::OpMultiply | OpCode::OpDivide => simple_instruction(instruction, print_offset),
         OpCode::OpConstant(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
-        OpCode::OpNegate => simple_instruction(instruction, print_offset),
         _ => {
             println!("Unknown opcode: {}", instruction);
-            offset+1
+            offset + 1
         }
     }
 }
@@ -54,7 +53,7 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
         ValueArray::print_value(*value);
         println!("'");
         offset + 2
-    }else{
+    } else {
         eprintln!("Invalid opcode passed as a constant instruction!");
         exit(1);
     }

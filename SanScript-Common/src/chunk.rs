@@ -6,7 +6,11 @@ use core::fmt;
 pub enum OpCode {
     OpReturn,
     OpConstant(usize),
-    OpNegate
+    OpNegate,
+    OpAdd,
+    OpSubtract,
+    OpMultiply,
+    OpDivide
 }
 
 impl fmt::Display for OpCode {
@@ -14,7 +18,11 @@ impl fmt::Display for OpCode {
         match self {
             OpCode::OpReturn => write!(f, "OP_RETURN"),
             OpCode::OpConstant(_) => write!(f, "OP_CONSTANT"),
-            OpCode::OpNegate => write!(f, "OP_NEGATE")
+            OpCode::OpNegate => write!(f, "OP_NEGATE"),
+            OpCode::OpAdd => write!(f, "OP_ADD"),
+            OpCode::OpSubtract => write!(f, "OP_SUBTRACT"),
+            OpCode::OpMultiply => write!(f, "OP_MULTIPLY"),
+            OpCode::OpDivide => write!(f, "OP_DIVIDE")
         }
     }
 }

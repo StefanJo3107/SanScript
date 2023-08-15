@@ -63,7 +63,27 @@ impl<'a> VM<'a> {
                 OpCode::OpNegate => {
                     let top = self.stack.pop().unwrap();
                     self.stack.push(-top);
-                }
+                },
+                OpCode::OpAdd => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(a + b);
+                },
+                OpCode::OpSubtract => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(a - b);
+                },
+                OpCode::OpMultiply => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(a * b);
+                },
+                OpCode::OpDivide => {
+                    let b = self.stack.pop().unwrap();
+                    let a = self.stack.pop().unwrap();
+                    self.stack.push(a / b);
+                },
             };
 
             self.ip += 1;
