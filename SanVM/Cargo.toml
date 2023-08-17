@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 sanscript_common = {path="../SanScript-Common"}
+sanscript_frontend = {path="../SanScript-Frontend"}

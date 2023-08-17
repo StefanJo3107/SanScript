@@ -37,10 +37,10 @@ pub fn run_file(path: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn read_file(path: &str) -> io::Result<Vec<u8>> {
+fn read_file(path: &str) -> io::Result<String> {
     let mut source_file = File::open(path)?;
-    let mut source = vec![];
-    source_file.read_to_end(&mut source)?;
+    let mut source: String = String::from("");
+    source_file.read_to_string(&mut source)?;
 
     Ok(source)
 }

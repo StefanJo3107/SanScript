@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 sanscript_common = {path="../SanScript-Common"}
-san_vm = {path="../SanVM"}

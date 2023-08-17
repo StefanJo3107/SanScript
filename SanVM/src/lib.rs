@@ -1,6 +1,7 @@
 use sanscript_common::chunk::{Chunk, OpCode};
-use sanscript_common::debug::{disassemble_chunk, disassemble_instruction};
+use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
+use sanscript_frontend::compiler;
 use crate::InterpretResult::InterpretOK;
 
 pub enum InterpretResult {
@@ -26,8 +27,13 @@ impl<'a> VM<'a> {
         }
     }
 
-    pub fn interpret(&mut self, name: &str) -> InterpretResult {
-        self.run(name)
+    // pub fn interpret(&mut self, name: &str) -> InterpretResult {
+    //     self.run(name)
+    // }
+
+    pub fn interpret(&mut self, source: String) -> InterpretResult {
+        compiler::compile(source);
+        InterpretOK
     }
 
     //most important function so far
@@ -88,7 +94,5 @@ impl<'a> VM<'a> {
 
             self.ip += 1;
         }
-
-        InterpretOK
     }
 }
