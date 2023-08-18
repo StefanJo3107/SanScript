@@ -29,6 +29,10 @@ impl<'a> Scanner<'a> {
 
         let c: char = self.advance();
 
+        if Scanner::is_digit(c) {
+            return self.number();
+        }
+
         match c {
             '(' => return self.make_token(TokenType::LeftParen),
             ')' => return self.make_token(TokenType::RightParen),
@@ -65,6 +69,9 @@ impl<'a> Scanner<'a> {
                 }
                 return self.make_token(TokenType::Less);
             }
+            '"' => {
+                return string();
+            }
             _ => ()
         }
 
@@ -98,12 +105,43 @@ impl<'a> Scanner<'a> {
         self.current_index >= self.source.len()
     }
 
+    pub fn is_digit(c: char) -> bool {
+        c >= '0' && c <= '9'
+    }
+
     pub fn make_token(&self, token_type: TokenType) -> Token {
         Token::new(token_type, self.start_index, self.current_index - self.start_index, self.source, self.line)
     }
 
     pub fn error_token(&self, message: &'a str) -> Token {
         Token::new(TokenType::Error, 0, message.len(), message, self.line)
+    }
+
+    pub fn number(&mut self) -> Token {
+        while Scanner::is_digit(self.peek()){
+            self.advance();
+        }
+
+        if self.peek() == '.' && Scanner::is_digit(self.peek_next()){
+            self.advance();
+            while Scanner::is_digit(self.peek()){
+                self.advance();
+            }
+        }
+
+        return self.make_token(TokenType::Number);
+    }
+
+    pub fn string(&mut self) -> Token {
+        while self.peek() != '"' && !self.is_at_end() {
+            if self.peek() == '\n' { self.line += 1; }
+            self.advance();
+        }
+
+        if self.is_at_end() { return self.error_token("Unterminated string."); }
+
+        self.advance();
+        return self.make_token(TokenType::String);
     }
 
     pub fn peek(&self) -> char {
