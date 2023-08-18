@@ -15,7 +15,7 @@ pub fn compile(source: String){
             print!("   | ");
         }
 
-        println!("{:>2} '{}'", token.token_type as usize, token.get_token_string(source.as_str()));
+        println!("{:>2} '{}'", token.token_type as usize, token.get_token_string());
 
         if token.token_type == TokenType::TokenEOF{
             break;
