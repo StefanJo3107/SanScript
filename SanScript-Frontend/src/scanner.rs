@@ -149,17 +149,17 @@ impl<'a> Scanner<'a> {
             'f' => {
                 if self.current_index - self.start_index > 1{
                     let second_char = self.source.chars().nth(self.start_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
-                    match second_char {
-                        'a' => return self.check_keyword(1, 3, "lse", TokenType::False),
-                        'o' => return self.check_keyword(1, 1, "r", TokenType::For),
+                    return match second_char {
+                        'a' => self.check_keyword(1, 3, "lse", TokenType::False),
+                        'o' => self.check_keyword(1, 1, "r", TokenType::For),
                         'n' => {
                             if self.current_index - self.start_index == 2 {
                                 return TokenType::Fn;
                             }
 
-                            return TokenType::Identifier;
+                            TokenType::Identifier
                         }
-                        _ => return TokenType::Identifier
+                        _ => TokenType::Identifier
                     }
                 }
 
