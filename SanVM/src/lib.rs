@@ -31,7 +31,7 @@ impl<'a> VM<'a> {
     //     self.run(name)
     // }
 
-    pub fn interpret(&mut self, source: String) -> InterpretResult {
+    pub fn interpret(source: String) -> InterpretResult {
         compiler::compile(source);
         InterpretOK
     }

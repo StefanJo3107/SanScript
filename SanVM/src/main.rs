@@ -1,3 +1,5 @@
+use san_vm::VM;
+
 fn main() {
-    println!("Hello, world!");
+    VM::interpret("let a = 0;".to_string());
 }

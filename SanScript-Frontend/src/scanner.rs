@@ -83,6 +83,10 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn skip_whitespace(&mut self) {
+        if self.is_at_end() {
+            return;
+        }
+
         loop {
             let c = self.peek();
             match c {
