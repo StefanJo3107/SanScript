@@ -29,6 +29,10 @@ impl<'a> Scanner<'a> {
 
         let c: char = self.advance();
 
+        if Scanner::is_alpha(c) {
+            return self.identifier();
+        }
+
         if Scanner::is_digit(c) {
             return self.number();
         }
@@ -70,7 +74,7 @@ impl<'a> Scanner<'a> {
                 return self.make_token(TokenType::Less);
             }
             '"' => {
-                return string();
+                return self.string();
             }
             _ => ()
         }
@@ -109,6 +113,10 @@ impl<'a> Scanner<'a> {
         c >= '0' && c <= '9'
     }
 
+    pub fn is_alpha(c: char) -> bool {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    }
+
     pub fn make_token(&self, token_type: TokenType) -> Token {
         Token::new(token_type, self.start_index, self.current_index - self.start_index, self.source, self.line)
     }
@@ -117,14 +125,66 @@ impl<'a> Scanner<'a> {
         Token::new(TokenType::Error, 0, message.len(), message, self.line)
     }
 
-    pub fn number(&mut self) -> Token {
-        while Scanner::is_digit(self.peek()){
+    pub fn identifier(&mut self) -> Token {
+        while Scanner::is_alpha(self.peek()) || Scanner::is_digit(self.peek()) {
             self.advance();
         }
 
-        if self.peek() == '.' && Scanner::is_digit(self.peek_next()){
+        self.make_token(self.identifier_type())
+    }
+
+    pub fn identifier_type(&self) -> TokenType {
+        let start_char = self.source.chars().nth(self.start_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
+        return match start_char {
+            'a' => self.check_keyword(1, 2, "nd", TokenType::And),
+            'e' => self.check_keyword(1, 3, "lse", TokenType::Else),
+            'i' => self.check_keyword(1, 1, "f", TokenType::If),
+            'l' => self.check_keyword(1, 2, "et", TokenType::Let),
+            'n' => self.check_keyword(1, 2, "il", TokenType::Nil),
+            'o' => self.check_keyword(1, 1, "r", TokenType::Or),
+            'p' => self.check_keyword(1, 4, "rint", TokenType::Print),
+            'r' => self.check_keyword(1, 5, "eturn", TokenType::Return),
+            't' => self.check_keyword(1, 3, "rue", TokenType::True),
+            'w' => self.check_keyword(1, 2, "hile", TokenType::While),
+            'f' => {
+                if self.current_index - self.start_index > 1{
+                    let second_char = self.source.chars().nth(self.start_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
+                    match second_char {
+                        'a' => return self.check_keyword(1, 3, "lse", TokenType::False),
+                        'o' => return self.check_keyword(1, 1, "r", TokenType::For),
+                        'n' => {
+                            if self.current_index - self.start_index == 2 {
+                                return TokenType::Fn;
+                            }
+
+                            return TokenType::Identifier;
+                        }
+                        _ => return TokenType::Identifier
+                    }
+                }
+
+                TokenType::Identifier
+            }
+            _ => TokenType::Identifier
+        };
+    }
+
+    pub fn check_keyword(&self, start: usize, length: usize, rest: &str, token_type: TokenType) -> TokenType {
+        if self.current_index - self.start_index == start + length && &self.source[self.start_index + 1..self.current_index] == rest{
+            return token_type;
+        }
+
+        return TokenType::Identifier;
+    }
+
+    pub fn number(&mut self) -> Token {
+        while Scanner::is_digit(self.peek()) {
             self.advance();
-            while Scanner::is_digit(self.peek()){
+        }
+
+        if self.peek() == '.' && Scanner::is_digit(self.peek_next()) {
+            self.advance();
+            while Scanner::is_digit(self.peek()) {
                 self.advance();
             }
         }
