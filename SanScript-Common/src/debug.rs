@@ -5,7 +5,7 @@ use crate::value::{Value, ValueArray};
 
 pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     //printing disassembler header
-    println!("\x1B[4mCODE |  LINE  | {: <30}\x1B[0m", name);
+    println!("\x1B[4mOFFSET |  LINE  | {: <30}\x1B[0m", name);
 
     //offset of a chunk code array
     let mut offset = 0;
@@ -14,7 +14,7 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
 
     while offset < chunk.len() {
         //printing offset of an opcode
-        print!("{:0>4} |", print_offset);
+        print!("{:0>6} |", print_offset);
 
         print_offset = disassemble_instruction(chunk, offset, print_offset);
         offset += 1;

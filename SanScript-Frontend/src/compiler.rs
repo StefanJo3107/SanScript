@@ -1,7 +1,8 @@
+use sanscript_common::chunk::Chunk;
 use crate::scanner::Scanner;
 use crate::token::TokenType;
 
-pub fn compile(source: String) {
+pub fn compile(source: String, chunk: &mut Chunk) -> bool{
     let mut scanner = Scanner::new(&source);
 
     let mut line: isize = -1;
@@ -23,4 +24,6 @@ pub fn compile(source: String) {
             break;
         }
     }
+
+    true
 }
