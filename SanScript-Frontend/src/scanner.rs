@@ -1,21 +1,43 @@
 use crate::token::{Token, TokenType};
 
-pub struct Scanner<'a> {
+pub struct Scanner {
     //start index of the current lexeme
     start_index: usize,
     //current char index of the current lexeme
     current_index: usize,
-    source: &'a str,
+    source: String,
     line: usize,
 }
 
-impl<'a> Scanner<'a> {
-    pub fn new(source: &'a str) -> Scanner {
+impl Scanner{
+    pub fn new(source: String) -> Scanner {
         Scanner {
             start_index: 0,
             current_index: 0,
             source,
             line: 1,
+        }
+    }
+
+    pub fn tokenize_source(&mut self) {
+        let mut line: isize = -1;
+
+        println!("\x1B[4mLINE | TYPE ID | TOKEN\x1B[0m");
+
+        loop {
+            let token = self.scan_token();
+            if token.line as isize != line {
+                print!("{:<5}  ", token.line);
+                line = token.line as isize;
+            } else {
+                print!("|      ");
+            }
+
+            println!("{:<9} '{}'", token.token_type as usize, token.get_token_string());
+
+            if token.token_type == TokenType::EOF {
+                break;
+            }
         }
     }
 
@@ -122,11 +144,11 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn make_token(&self, token_type: TokenType) -> Token {
-        Token::new(token_type, self.start_index, self.current_index - self.start_index, self.source, self.line)
+        Token::new(token_type, self.start_index, self.current_index - self.start_index, self.source.clone(), self.line)
     }
 
-    pub fn error_token(&self, message: &'a str) -> Token {
-        Token::new(TokenType::Error, 0, message.len(), message, self.line)
+    pub fn error_token(&self, message: &str) -> Token {
+        Token::new(TokenType::Error, 0, message.len(), message.to_string(), self.line)
     }
 
     pub fn identifier(&mut self) -> Token {
@@ -151,7 +173,7 @@ impl<'a> Scanner<'a> {
             't' => self.check_keyword(1, 3, "rue", TokenType::True),
             'w' => self.check_keyword(1, 2, "hile", TokenType::While),
             'f' => {
-                if self.current_index - self.start_index > 1{
+                if self.current_index - self.start_index > 1 {
                     let second_char = self.source.chars().nth(self.start_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
                     return match second_char {
                         'a' => self.check_keyword(1, 3, "lse", TokenType::False),
@@ -164,7 +186,7 @@ impl<'a> Scanner<'a> {
                             TokenType::Identifier
                         }
                         _ => TokenType::Identifier
-                    }
+                    };
                 }
 
                 TokenType::Identifier
@@ -174,7 +196,7 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn check_keyword(&self, start: usize, length: usize, rest: &str, token_type: TokenType) -> TokenType {
-        if self.current_index - self.start_index == start + length && &self.source[self.start_index + 1..self.current_index] == rest{
+        if self.current_index - self.start_index == start + length && &self.source[self.start_index + 1..self.current_index] == rest {
             return token_type;
         }
 

@@ -1,29 +1,18 @@
 use sanscript_common::chunk::Chunk;
+use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::token::TokenType;
 
-pub fn compile(source: String, chunk: &mut Chunk) -> bool{
-    let mut scanner = Scanner::new(&source);
+pub fn compile(source: String, chunk: &mut Chunk) -> bool {
+    let mut scanner = Scanner::new(source);
+    let mut parser = Parser::new();
 
-    let mut line: isize = -1;
+    parser.advance(&mut scanner);
+    expression();
+    parser.consume(TokenType::EOF, "Expect end of expression.".to_string(), &mut scanner);
 
-    println!("\x1B[4mLINE | TYPE ID | TOKEN\x1B[0m");
-
-    loop {
-        let token = scanner.scan_token();
-        if token.line as isize != line {
-            print!("{:<5}  ", token.line);
-            line = token.line as isize;
-        } else {
-            print!("|      ");
-        }
-
-        println!("{:<9} '{}'", token.token_type as usize, token.get_token_string());
-
-        if token.token_type == TokenType::EOF {
-            break;
-        }
-    }
-
-    true
+    return !parser.had_error;
 }
+
+
+fn expression() {}

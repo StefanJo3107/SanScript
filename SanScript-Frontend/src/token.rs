@@ -52,16 +52,17 @@ pub enum TokenType {
     EOF,
 }
 
-pub struct Token<'a>{
+#[derive(Clone)]
+pub struct Token{
     pub token_type: TokenType,
     pub start_index: usize,
     pub length: usize,
-    pub source: &'a str,
+    pub source: String,
     pub line: usize,
 }
 
-impl<'a> Token<'a>{
-    pub fn new(token_type: TokenType, start_index: usize, length: usize, source: &'a str, line: usize) -> Token {
+impl Token{
+    pub fn new(token_type: TokenType, start_index: usize, length: usize, source: String, line: usize) -> Token {
         Token{
             token_type,
             start_index,
@@ -71,7 +72,7 @@ impl<'a> Token<'a>{
         }
     }
 
-    pub fn get_token_string(&self) -> &'a str {
-        &self.source[self.start_index..self.start_index+self.length]
+    pub fn get_token_string(&self) -> String {
+        self.source[self.start_index..self.start_index+self.length].to_string()
     }
 }
