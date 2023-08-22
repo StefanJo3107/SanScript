@@ -1,16 +1,16 @@
 use crate::token::{Token, TokenType};
 
-pub struct Scanner {
+pub struct Scanner<'a>{
     //start index of the current lexeme
     start_index: usize,
     //current char index of the current lexeme
     current_index: usize,
-    source: String,
+    pub source: &'a str,
     line: usize,
 }
 
-impl Scanner{
-    pub fn new(source: String) -> Scanner {
+impl<'a> Scanner<'a> {
+    pub fn new(source: &'a str) -> Scanner {
         Scanner {
             start_index: 0,
             current_index: 0,
@@ -22,7 +22,7 @@ impl Scanner{
     pub fn tokenize_source(&mut self) {
         let mut line: isize = -1;
 
-        println!("\x1B[4mLINE | TYPE ID | TOKEN\x1B[0m");
+        println!("\x1B[4mLINE |   TOKEN TYPE   | TOKEN  \x1B[0m");
 
         loop {
             let token = self.scan_token();
@@ -33,7 +33,7 @@ impl Scanner{
                 print!("|      ");
             }
 
-            println!("{:<9} '{}'", token.token_type as usize, token.get_token_string());
+            println!("{:16} '{}'", token.token_type.to_string(), token.get_token_string(self.source));
 
             if token.token_type == TokenType::EOF {
                 break;
@@ -144,11 +144,11 @@ impl Scanner{
     }
 
     pub fn make_token(&self, token_type: TokenType) -> Token {
-        Token::new(token_type, self.start_index, self.current_index - self.start_index, self.source.clone(), self.line)
+        Token::new(token_type, self.start_index, self.current_index - self.start_index, self.line)
     }
 
-    pub fn error_token(&self, message: &str) -> Token {
-        Token::new(TokenType::Error, 0, message.len(), message.to_string(), self.line)
+    pub fn error_token(&self, message: &'a str) -> Token {
+        Token::new(TokenType::Error(message.to_string()), 0, message.len(), self.line)
     }
 
     pub fn identifier(&mut self) -> Token {
