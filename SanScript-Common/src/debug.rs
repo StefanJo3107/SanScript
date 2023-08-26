@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use std::process::exit;
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
@@ -52,7 +53,7 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
         //printing operand value
         ValueArray::print_value(*value);
         println!("'");
-        offset + 2
+        offset + size_of::<usize>() + 1
     } else {
         eprintln!("Invalid opcode passed as a constant instruction!");
         exit(1);
