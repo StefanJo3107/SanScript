@@ -1,9 +1,5 @@
-use std::cell::{Ref, RefCell};
-use std::rc::Rc;
-use crate::scanner::Scanner;
+use crate::ScannerRef;
 use crate::token::{Token, TokenType};
-
-type ScannerRef<'a> = Rc<RefCell<Scanner<'a>>>;
 
 pub struct Parser {
     pub current: Option<Token>,
@@ -54,7 +50,7 @@ impl Parser {
         self.had_error = true;
     }
 
-    fn error(&mut self, message: String, source: &str) {
+    pub fn error(&mut self, message: String, source: &str) {
         self.error_at(self.previous.as_ref().unwrap_or_else(|| { panic!("Parsed token is of type None.") }), message, source);
         self.panic_mode = true;
         self.had_error = true;

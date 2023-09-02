@@ -1,7 +1,7 @@
 use std::fmt;
+use strum_macros::{EnumCount as EnumCountMacro, EnumIter};
 
-#[repr(usize)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug, EnumCountMacro, EnumIter)]
 pub enum TokenType {
     //single character tokens
     LeftParen,
@@ -52,6 +52,57 @@ pub enum TokenType {
     //misc
     Error(String),
     EOF,
+}
+impl Into<usize> for TokenType{
+    fn into(self) -> usize {
+        match self
+        {
+            TokenType::LeftParen => 1,
+            TokenType::RightParen => 2,
+            TokenType::LeftBrace => 3,
+            TokenType::RightBrace => 4,
+            TokenType::Comma => 5,
+            TokenType::Dot => 6,
+            TokenType::Plus => 7,
+            TokenType::Minus => 8,
+            TokenType::Semicolon => 9,
+            TokenType::Slash => 10,
+            TokenType::Star => 11,
+
+            TokenType::Bang => 12,
+            TokenType::BangEqual => 13,
+            TokenType::Equal => 14,
+            TokenType::EqualEqual => 15,
+            TokenType::Greater => 16,
+            TokenType::GreaterEqual => 17,
+            TokenType::Less => 18,
+            TokenType::LessEqual => 19,
+
+            TokenType::Identifier => 20,
+            TokenType::String => 21,
+            TokenType::Number => 22,
+
+            TokenType::And => 23,
+            TokenType::Else => 24,
+            TokenType::False => 25,
+            TokenType::For => 26,
+            TokenType::Fn => 27,
+            TokenType::If => 28,
+            TokenType::Key => 29,
+            TokenType::Loop => 30,
+            TokenType::Match => 31,
+            TokenType::Nil => 32,
+            TokenType::Or => 33,
+            TokenType::Print => 34,
+            TokenType::Return => 35,
+            TokenType::True => 36,
+            TokenType::Let => 37,
+            TokenType::While => 38,
+
+            TokenType::Error(_) => 39,
+            TokenType::EOF => 40,
+        }
+    }
 }
 
 impl fmt::Display for TokenType {

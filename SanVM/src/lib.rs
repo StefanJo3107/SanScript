@@ -20,9 +20,9 @@ pub struct VM {
 }
 
 impl VM {
-    pub fn new(chunk: Chunk) -> VM {
+    pub fn new() -> VM {
         VM {
-            chunk,
+            chunk: Chunk::new(),
             ip: 0,
             stack: vec![],
         }
@@ -34,9 +34,9 @@ impl VM {
 
     pub fn interpret(&mut self, source: String) -> InterpretResult {
         let mut chunk = Chunk::new();
-        let mut compiler = Compiler::new();
+        let mut compiler = Compiler::new(source.as_str());
 
-        if !compiler.compile(source, &mut chunk) {
+        if !compiler.compile(&mut chunk) {
             return InterpretCompileError;
         }
 
