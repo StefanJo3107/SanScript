@@ -39,6 +39,8 @@ impl<'a> Scanner<'a> {
                 break;
             }
         }
+
+        println!();
     }
 
     pub fn scan_token(&mut self) -> Token {
@@ -231,6 +233,9 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn peek(&self) -> char {
+        if self.is_at_end(){
+            return '\0';
+        }
         self.source.chars().nth(self.current_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") })
     }
 

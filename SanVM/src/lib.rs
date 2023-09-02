@@ -1,7 +1,6 @@
 use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
-use sanscript_frontend::compiler;
 use sanscript_frontend::compiler::Compiler;
 use crate::InterpretResult::{InterpretCompileError, InterpretOK};
 

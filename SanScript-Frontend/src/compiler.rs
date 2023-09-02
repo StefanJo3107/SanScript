@@ -9,7 +9,7 @@ use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::ScannerRef;
 use crate::token::TokenType;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::EnumCount;
 
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
@@ -58,288 +58,288 @@ impl<'a> Compiler<'a> {
         let mut compiler = Compiler {
             parser: Parser::new(),
             compiling_chunk: None,
-            rules: vec![ParseRule{infix: None, prefix: None, precedence: Precedence::None};TokenType::COUNT + 1],
+            rules: vec![ParseRule { infix: None, prefix: None, precedence: Precedence::None }; TokenType::COUNT + 1],
             scanner: Rc::new(RefCell::new(Scanner::new(source))),
             source,
         };
 
         let mut token_index: usize = TokenType::LeftParen.into();
         compiler.rules[token_index] = ParseRule {
-            infix: Some(Compiler::grouping),
-            prefix: None,
+            prefix: Some(Compiler::grouping),
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::RightParen.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::LeftBrace.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::RightBrace.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Comma.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Dot.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Minus.into();
         compiler.rules[token_index] = ParseRule {
-            infix: Some(Compiler::unary),
-            prefix: Some(Compiler::binary),
+            prefix: Some(Compiler::unary),
+            infix: Some(Compiler::binary),
             precedence: Precedence::Term,
         };
 
         token_index = TokenType::Plus.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
-            prefix: Some(Compiler::binary),
+            prefix: None,
+            infix: Some(Compiler::binary),
             precedence: Precedence::Term,
         };
 
         token_index = TokenType::Semicolon.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Slash.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
-            prefix: Some(Compiler::binary),
+            prefix: None,
+            infix: Some(Compiler::binary),
             precedence: Precedence::Factor,
         };
 
         token_index = TokenType::Star.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
-            prefix: Some(Compiler::binary),
+            prefix: None,
+            infix: Some(Compiler::binary),
             precedence: Precedence::Factor,
         };
 
         token_index = TokenType::Bang.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::BangEqual.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Equal.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::EqualEqual.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Greater.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::GreaterEqual.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Less.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::LessEqual.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Identifier.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::String.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Number.into();
         compiler.rules[token_index] = ParseRule {
-            infix: Some(Compiler::number),
-            prefix: None,
+            prefix: Some(Compiler::number),
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::And.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Else.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::False.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::For.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Fn.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::If.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Key.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Match.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Loop.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Nil.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Or.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Print.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Return.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::True.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::Let.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::While.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = 39; //Error
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
         token_index = TokenType::EOF.into();
         compiler.rules[token_index] = ParseRule {
-            infix: None,
             prefix: None,
+            infix: None,
             precedence: Precedence::None,
         };
 
@@ -365,7 +365,6 @@ impl<'a> Compiler<'a> {
         self.parser.advance(self.scanner.clone());
         let previous_token: usize = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone().into();
         let prefix_rule = self.rules[previous_token].prefix;
-
         if let Some(prefix) = prefix_rule {
             prefix(self);
         } else {
@@ -395,8 +394,8 @@ impl<'a> Compiler<'a> {
     pub fn end_compiler(&mut self) {
         self.emit_return();
 
-        if !self.parser.had_error{
-            disassemble_chunk(self.compiling_chunk.as_ref().unwrap_or_else(||{panic!("No chunk present!")}), "code");
+        if !self.parser.had_error {
+            // disassemble_chunk(self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("No chunk present!") }), "code");
         }
     }
 
