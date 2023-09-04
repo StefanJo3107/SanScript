@@ -1,10 +1,17 @@
-pub type Value = f64;
+pub type Number = f64;
 
-pub struct ValueArray {
-    values: Vec<Value>
+#[derive(Copy, Clone)]
+pub enum Value {
+    ValBool(bool),
+    ValNumber(Number),
+    ValNil,
 }
 
-impl ValueArray{
+pub struct ValueArray {
+    values: Vec<Value>,
+}
+
+impl ValueArray {
     pub fn new() -> ValueArray {
         ValueArray { values: vec![] }
     }
@@ -21,7 +28,11 @@ impl ValueArray{
         self.values.push(value);
     }
 
-    pub fn print_value(value: Value){
-        print!("\x1B[3m{}\x1B[0m", value);
+    pub fn print_value(value: Value) {
+        match value {
+            Value::ValBool(boolean) => print!("\x1B[3m{}\x1B[0m", boolean),
+            Value::ValNumber(number) => print!("\x1B[3m{}\x1B[0m", number),
+            Value::ValNil => print!("\x1B[3m{}\x1B[0m", "nil")
+        }
     }
 }

@@ -3,6 +3,7 @@ use crate::value::Value;
 use core::fmt;
 
 #[repr(u8)]
+#[derive(Copy, Clone)]
 pub enum OpCode {
     OpReturn,
     OpConstant(usize),
@@ -10,7 +11,14 @@ pub enum OpCode {
     OpAdd,
     OpSubtract,
     OpMultiply,
-    OpDivide
+    OpDivide,
+    OpTrue,
+    OpFalse,
+    OpNil,
+    OpNot,
+    OpEqual,
+    OpGreater,
+    OpLess
 }
 
 impl fmt::Display for OpCode {
@@ -22,7 +30,14 @@ impl fmt::Display for OpCode {
             OpCode::OpAdd => write!(f, "OP_ADD"),
             OpCode::OpSubtract => write!(f, "OP_SUBTRACT"),
             OpCode::OpMultiply => write!(f, "OP_MULTIPLY"),
-            OpCode::OpDivide => write!(f, "OP_DIVIDE")
+            OpCode::OpDivide => write!(f, "OP_DIVIDE"),
+            OpCode::OpTrue => write!(f, "OP_TRUE"),
+            OpCode::OpFalse => write!(f, "OP_FALSE"),
+            OpCode::OpNil => write!(f, "OP_NIL"),
+            OpCode::OpNot => write!(f, "OP_NOT"),
+            OpCode::OpEqual => write!(f, "OP_EQUAL"),
+            OpCode::OpGreater => write!(f, "OP_GREATER"),
+            OpCode::OpLess => write!(f, "OP_LESS")
         }
     }
 }

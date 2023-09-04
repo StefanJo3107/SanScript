@@ -3,8 +3,7 @@ use std::rc::Rc;
 use num_derive::FromPrimitive;
 use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::chunk::OpCode::OpConstant;
-use sanscript_common::debug::disassemble_chunk;
-use sanscript_common::value::Value;
+use sanscript_common::value::{Number, Value};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::ScannerRef;
@@ -142,7 +141,7 @@ impl<'a> Compiler<'a> {
 
         token_index = TokenType::Bang.into();
         compiler.rules[token_index] = ParseRule {
-            prefix: None,
+            prefix: Some(Compiler::unary),
             infix: None,
             precedence: Precedence::None,
         };
@@ -150,8 +149,8 @@ impl<'a> Compiler<'a> {
         token_index = TokenType::BangEqual.into();
         compiler.rules[token_index] = ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Compiler::binary),
+            precedence: Precedence::Equality,
         };
 
         token_index = TokenType::Equal.into();
@@ -164,36 +163,36 @@ impl<'a> Compiler<'a> {
         token_index = TokenType::EqualEqual.into();
         compiler.rules[token_index] = ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Compiler::binary),
+            precedence: Precedence::Equality,
         };
 
         token_index = TokenType::Greater.into();
         compiler.rules[token_index] = ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Compiler::binary),
+            precedence: Precedence::Comparison,
         };
 
         token_index = TokenType::GreaterEqual.into();
         compiler.rules[token_index] = ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Compiler::binary),
+            precedence: Precedence::Comparison,
         };
 
         token_index = TokenType::Less.into();
         compiler.rules[token_index] = ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Compiler::binary),
+            precedence: Precedence::Comparison,
         };
 
         token_index = TokenType::LessEqual.into();
         compiler.rules[token_index] = ParseRule {
             prefix: None,
-            infix: None,
-            precedence: Precedence::None,
+            infix: Some(Compiler::binary),
+            precedence: Precedence::Comparison,
         };
 
         token_index = TokenType::Identifier.into();
@@ -233,7 +232,7 @@ impl<'a> Compiler<'a> {
 
         token_index = TokenType::False.into();
         compiler.rules[token_index] = ParseRule {
-            prefix: None,
+            prefix: Some(Compiler::literal),
             infix: None,
             precedence: Precedence::None,
         };
@@ -282,7 +281,7 @@ impl<'a> Compiler<'a> {
 
         token_index = TokenType::Nil.into();
         compiler.rules[token_index] = ParseRule {
-            prefix: None,
+            prefix: Some(Compiler::literal),
             infix: None,
             precedence: Precedence::None,
         };
@@ -310,7 +309,7 @@ impl<'a> Compiler<'a> {
 
         token_index = TokenType::True.into();
         compiler.rules[token_index] = ParseRule {
-            prefix: None,
+            prefix: Some(Compiler::literal),
             infix: None,
             precedence: Precedence::None,
         };
@@ -393,16 +392,20 @@ impl<'a> Compiler<'a> {
 
     pub fn end_compiler(&mut self) {
         self.emit_return();
-
-        if !self.parser.had_error {
-            // disassemble_chunk(self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("No chunk present!") }), "code");
-        }
     }
 
     pub fn emit_byte(&mut self, byte: OpCode) {
         self.compiling_chunk.as_mut()
             .unwrap_or_else(|| { panic!("Current chunk is not set!") })
             .write_chunk(byte, self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).line);
+    }
+
+    pub fn emit_bytes(&mut self, bytes: &[OpCode]) {
+        for byte in bytes {
+            self.compiling_chunk.as_mut()
+                .unwrap_or_else(|| { panic!("Current chunk is not set!") })
+                .write_chunk(*byte, self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).line);
+        }
     }
 
     pub fn emit_return(&mut self) {
@@ -415,9 +418,20 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn number(&mut self) {
-        let value: Value = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
-            .get_token_string(self.source).parse::<Value>().unwrap_or_else(|_| { panic!("Could not parse token value to number!") });
-        self.emit_constant(value);
+        let value: Number = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
+            .get_token_string(self.source).parse::<Number>().unwrap_or_else(|_| { panic!("Could not parse token value to number!") });
+        self.emit_constant(Value::ValNumber(value));
+    }
+
+    pub fn literal(&mut self) {
+        let token_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
+
+        match token_type {
+            TokenType::True => self.emit_byte(OpCode::OpTrue),
+            TokenType::False => self.emit_byte(OpCode::OpFalse),
+            TokenType::Nil => self.emit_byte(OpCode::OpNil),
+            _ => return
+        }
     }
 
     pub fn grouping(&mut self) {
@@ -432,6 +446,7 @@ impl<'a> Compiler<'a> {
 
         match operator_type {
             TokenType::Minus => self.emit_byte(OpCode::OpNegate),
+            TokenType::Bang => self.emit_byte(OpCode::OpNot),
             _ => return
         }
     }
@@ -448,6 +463,12 @@ impl<'a> Compiler<'a> {
             TokenType::Minus => self.emit_byte(OpCode::OpSubtract),
             TokenType::Star => self.emit_byte(OpCode::OpMultiply),
             TokenType::Slash => self.emit_byte(OpCode::OpDivide),
+            TokenType::EqualEqual => self.emit_byte(OpCode::OpEqual),
+            TokenType::BangEqual => self.emit_bytes(&[OpCode::OpEqual, OpCode::OpNot]),
+            TokenType::Greater => self.emit_byte(OpCode::OpGreater),
+            TokenType::Less => self.emit_byte(OpCode::OpLess),
+            TokenType::GreaterEqual => self.emit_bytes(&[OpCode::OpLess, OpCode::OpNot]),
+            TokenType::LessEqual => self.emit_bytes(&[OpCode::OpGreater, OpCode::OpNot]),
             _ => return
         }
     }

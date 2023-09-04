@@ -2,7 +2,7 @@ use san_vm::VM;
 use sanscript_frontend::scanner::Scanner;
 
 fn main() {
-    let source = "(-1 + 2) * 3 - -4";
+    let source = "!(5 - 4 > 3 * 2 == !nil)";
     println!();
     println!("Source code: {}", source);
     println!();

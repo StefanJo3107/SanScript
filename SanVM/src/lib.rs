@@ -1,8 +1,9 @@
+use std::any::Any;
 use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
 use sanscript_frontend::compiler::Compiler;
-use crate::InterpretResult::{InterpretCompileError, InterpretOK};
+use crate::InterpretResult::{InterpretCompileError, InterpretOK, InterpretRuntimeError};
 
 pub enum InterpretResult {
     InterpretOK,
@@ -77,32 +78,126 @@ impl VM {
                     self.stack.push(*constant);
                 }
                 OpCode::OpNegate => {
-                    let top = self.stack.pop().unwrap();
-                    self.stack.push(-top);
+                    if let Some(Value::ValNumber(number)) = self.stack.last() {
+                        self.stack.push(Value::ValNumber(-*number));
+                        //remove element that used to be last
+                        self.stack.remove(self.stack.len() - 2);
+                    } else {
+                        self.runtime_error("Operand must be a number.");
+                        return InterpretRuntimeError;
+                    }
                 }
                 OpCode::OpAdd => {
-                    let b = self.stack.pop().unwrap();
-                    let a = self.stack.pop().unwrap();
-                    self.stack.push(a + b);
+                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                        self.runtime_error("Operands must be numbers.");
+                        return InterpretRuntimeError;
+                    }
+                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                            self.stack.push(Value::ValNumber(a + b));
+                        }
+                    }
                 }
                 OpCode::OpSubtract => {
-                    let b = self.stack.pop().unwrap();
-                    let a = self.stack.pop().unwrap();
-                    self.stack.push(a - b);
+                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                        self.runtime_error("Operands must be numbers.");
+                        return InterpretRuntimeError;
+                    }
+                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                            self.stack.push(Value::ValNumber(a - b));
+                        }
+                    }
                 }
                 OpCode::OpMultiply => {
-                    let b = self.stack.pop().unwrap();
-                    let a = self.stack.pop().unwrap();
-                    self.stack.push(a * b);
+                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                        self.runtime_error("Operands must be numbers.");
+                        return InterpretRuntimeError;
+                    }
+                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                            self.stack.push(Value::ValNumber(a * b));
+                        }
+                    }
                 }
                 OpCode::OpDivide => {
-                    let b = self.stack.pop().unwrap();
-                    let a = self.stack.pop().unwrap();
-                    self.stack.push(a / b);
+                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                        self.runtime_error("Operands must be numbers.");
+                        return InterpretRuntimeError;
+                    }
+                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                            self.stack.push(Value::ValNumber(a / b));
+                        }
+                    }
                 }
+                OpCode::OpTrue => {
+                    self.stack.push(Value::ValBool(true))
+                }
+                OpCode::OpFalse => {
+                    self.stack.push(Value::ValBool(false))
+                }
+                OpCode::OpNil => {
+                    self.stack.push(Value::ValNil)
+                }
+                OpCode::OpNot => {
+                    let value = self.stack.pop().unwrap_or_else(||{panic!("Stack is empty.");});
+                    self.stack.push(Value::ValBool(self.negate(value)));
+                },
+                OpCode::OpEqual => {
+                    let b = self.stack.pop().unwrap_or_else(||{panic!("Stack is empty.");});
+                    let a = self.stack.pop().unwrap_or_else(||{panic!("Stack is empty.");});
+                    self.stack.push(Value::ValBool(self.equals(a,b)));
+                },
+                OpCode::OpGreater => {
+                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                        self.runtime_error("Operands must be numbers.");
+                        return InterpretRuntimeError;
+                    }
+                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                            self.stack.push(Value::ValBool(a > b));
+                        }
+                    }
+                },
+                OpCode::OpLess => {
+                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                        self.runtime_error("Operands must be numbers.");
+                        return InterpretRuntimeError;
+                    }
+                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                            self.stack.push(Value::ValBool(a < b));
+                        }
+                    }
+                },
             };
 
             self.ip += 1;
         }
+    }
+
+    pub fn negate(&self, value: Value) -> bool {
+        return match value {
+            Value::ValBool(boolean) => !boolean,
+            Value::ValNumber(number) => number == 0.0,
+            Value::ValNil => true
+        }
+    }
+
+    pub fn equals(&self, a:Value, b:Value) -> bool{
+        return match (a,b) {
+            (Value::ValNumber(numA), Value::ValNumber(numB)) => numA==numB,
+            (Value::ValBool(boolA), Value::ValBool(boolB)) => boolA==boolB,
+            (Value::ValNil, Value::ValNil) => true,
+            _ => false
+        }
+    }
+
+    pub fn runtime_error(&mut self, message: &str) {
+        eprintln!("{}", message);
+
+        eprintln!("[line {}] in script", self.chunk.get_line(self.ip - 1));
+        self.stack = vec![];
     }
 }

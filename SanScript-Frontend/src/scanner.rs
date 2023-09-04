@@ -1,6 +1,6 @@
 use crate::token::{Token, TokenType};
 
-pub struct Scanner<'a>{
+pub struct Scanner<'a> {
     //start index of the current lexeme
     start_index: usize,
     //current char index of the current lexeme
@@ -176,10 +176,10 @@ impl<'a> Scanner<'a> {
             'w' => self.check_keyword(1, 2, "hile", TokenType::While),
             'f' => {
                 if self.current_index - self.start_index > 1 {
-                    let second_char = self.source.chars().nth(self.start_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
+                    let second_char = self.source.chars().nth(self.start_index + 1).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
                     return match second_char {
-                        'a' => self.check_keyword(1, 3, "lse", TokenType::False),
-                        'o' => self.check_keyword(1, 1, "r", TokenType::For),
+                        'a' => self.check_keyword(2, 3, "lse", TokenType::False),
+                        'o' => self.check_keyword(2, 1, "r", TokenType::For),
                         'n' => {
                             if self.current_index - self.start_index == 2 {
                                 return TokenType::Fn;
@@ -198,7 +198,7 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn check_keyword(&self, start: usize, length: usize, rest: &str, token_type: TokenType) -> TokenType {
-        if self.current_index - self.start_index == start + length && &self.source[self.start_index + 1..self.current_index] == rest {
+        if self.current_index - self.start_index == start + length && &self.source[self.start_index + start..self.current_index] == rest {
             return token_type;
         }
 
@@ -233,7 +233,7 @@ impl<'a> Scanner<'a> {
     }
 
     pub fn peek(&self) -> char {
-        if self.is_at_end(){
+        if self.is_at_end() {
             return '\0';
         }
         self.source.chars().nth(self.current_index).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") })
