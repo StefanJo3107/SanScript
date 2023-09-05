@@ -49,6 +49,20 @@ impl VM {
 
     //most important function so far
     fn run(&mut self) -> InterpretResult {
+        macro_rules! binary_op {
+            ($value_type: path,$op: tt) => {
+                if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                    self.runtime_error("Operands must be numbers.");
+                    return InterpretRuntimeError;
+                }
+                if let Value::ValNumber(b) = self.stack.pop().unwrap() {
+                    if let Value::ValNumber(a) = self.stack.pop().unwrap() {
+                        self.stack.push($value_type(a $op b));
+                    }
+                }
+            }
+        }
+
         //printing disassembler header
         println!("\x1B[4mOFFSET |  LINE  | {: <30}\x1B[0m", "OPCODE");
         let mut print_offset = 0;
@@ -88,48 +102,16 @@ impl VM {
                     }
                 }
                 OpCode::OpAdd => {
-                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
-                        self.runtime_error("Operands must be numbers.");
-                        return InterpretRuntimeError;
-                    }
-                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
-                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
-                            self.stack.push(Value::ValNumber(a + b));
-                        }
-                    }
+                    binary_op!(Value::ValNumber, +);
                 }
                 OpCode::OpSubtract => {
-                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
-                        self.runtime_error("Operands must be numbers.");
-                        return InterpretRuntimeError;
-                    }
-                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
-                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
-                            self.stack.push(Value::ValNumber(a - b));
-                        }
-                    }
+                    binary_op!(Value::ValNumber, -);
                 }
                 OpCode::OpMultiply => {
-                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
-                        self.runtime_error("Operands must be numbers.");
-                        return InterpretRuntimeError;
-                    }
-                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
-                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
-                            self.stack.push(Value::ValNumber(a * b));
-                        }
-                    }
+                    binary_op!(Value::ValNumber, *);
                 }
                 OpCode::OpDivide => {
-                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
-                        self.runtime_error("Operands must be numbers.");
-                        return InterpretRuntimeError;
-                    }
-                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
-                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
-                            self.stack.push(Value::ValNumber(a / b));
-                        }
-                    }
+                    binary_op!(Value::ValNumber, /);
                 }
                 OpCode::OpTrue => {
                     self.stack.push(Value::ValBool(true))
@@ -141,36 +123,20 @@ impl VM {
                     self.stack.push(Value::ValNil)
                 }
                 OpCode::OpNot => {
-                    let value = self.stack.pop().unwrap_or_else(||{panic!("Stack is empty.");});
+                    let value = self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty."); });
                     self.stack.push(Value::ValBool(self.negate(value)));
-                },
+                }
                 OpCode::OpEqual => {
-                    let b = self.stack.pop().unwrap_or_else(||{panic!("Stack is empty.");});
-                    let a = self.stack.pop().unwrap_or_else(||{panic!("Stack is empty.");});
-                    self.stack.push(Value::ValBool(self.equals(a,b)));
-                },
+                    let b = self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty."); });
+                    let a = self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty."); });
+                    self.stack.push(Value::ValBool(self.equals(a, b)));
+                }
                 OpCode::OpGreater => {
-                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
-                        self.runtime_error("Operands must be numbers.");
-                        return InterpretRuntimeError;
-                    }
-                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
-                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
-                            self.stack.push(Value::ValBool(a > b));
-                        }
-                    }
-                },
+                    binary_op!(Value::ValBool, >);
+                }
                 OpCode::OpLess => {
-                    if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
-                        self.runtime_error("Operands must be numbers.");
-                        return InterpretRuntimeError;
-                    }
-                    if let Value::ValNumber(b) = self.stack.pop().unwrap() {
-                        if let Value::ValNumber(a) = self.stack.pop().unwrap() {
-                            self.stack.push(Value::ValBool(a < b));
-                        }
-                    }
-                },
+                    binary_op!(Value::ValBool, <);
+                }
             };
 
             self.ip += 1;
@@ -182,16 +148,16 @@ impl VM {
             Value::ValBool(boolean) => !boolean,
             Value::ValNumber(number) => number == 0.0,
             Value::ValNil => true
-        }
+        };
     }
 
-    pub fn equals(&self, a:Value, b:Value) -> bool{
-        return match (a,b) {
-            (Value::ValNumber(numA), Value::ValNumber(numB)) => numA==numB,
-            (Value::ValBool(boolA), Value::ValBool(boolB)) => boolA==boolB,
+    pub fn equals(&self, a: Value, b: Value) -> bool {
+        return match (a, b) {
+            (Value::ValNumber(num_a), Value::ValNumber(num_b)) => num_a == num_b,
+            (Value::ValBool(bool_a), Value::ValBool(bool_b)) => bool_a == bool_b,
             (Value::ValNil, Value::ValNil) => true,
             _ => false
-        }
+        };
     }
 
     pub fn runtime_error(&mut self, message: &str) {
