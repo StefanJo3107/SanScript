@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "SanScript-Frontend",
-    "SanVM",
-    "SanScript-Common"
+    "sanscript-frontend",
+    "sanscript-vm",
+    "sanscript-common"
 ]

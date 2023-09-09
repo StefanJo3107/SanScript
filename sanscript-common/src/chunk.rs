@@ -1,45 +1,38 @@
 use crate::value::ValueArray;
 use crate::value::Value;
-use core::fmt;
+use strum_macros::Display;
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Display, Debug)]
 pub enum OpCode {
+    #[strum(serialize = "OP_RETURN")]
     OpReturn,
+    #[strum(serialize = "OP_CONSTANT")]
     OpConstant(usize),
+    #[strum(serialize = "OP_NEGATE")]
     OpNegate,
+    #[strum(serialize = "OP_ADD")]
     OpAdd,
+    #[strum(serialize = "OP_SUBTRACT")]
     OpSubtract,
+    #[strum(serialize = "OP_MULTIPLY")]
     OpMultiply,
+    #[strum(serialize = "OP_DIVIDE")]
     OpDivide,
+    #[strum(serialize = "OP_TRUE")]
     OpTrue,
+    #[strum(serialize = "OP_FALSE")]
     OpFalse,
+    #[strum(serialize = "OP_NIL")]
     OpNil,
+    #[strum(serialize = "OP_NOT")]
     OpNot,
+    #[strum(serialize = "OP_EQUAL")]
     OpEqual,
+    #[strum(serialize = "OP_GREATER")]
     OpGreater,
+    #[strum(serialize = "OP_LESS")]
     OpLess
-}
-
-impl fmt::Display for OpCode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            OpCode::OpReturn => write!(f, "OP_RETURN"),
-            OpCode::OpConstant(_) => write!(f, "OP_CONSTANT"),
-            OpCode::OpNegate => write!(f, "OP_NEGATE"),
-            OpCode::OpAdd => write!(f, "OP_ADD"),
-            OpCode::OpSubtract => write!(f, "OP_SUBTRACT"),
-            OpCode::OpMultiply => write!(f, "OP_MULTIPLY"),
-            OpCode::OpDivide => write!(f, "OP_DIVIDE"),
-            OpCode::OpTrue => write!(f, "OP_TRUE"),
-            OpCode::OpFalse => write!(f, "OP_FALSE"),
-            OpCode::OpNil => write!(f, "OP_NIL"),
-            OpCode::OpNot => write!(f, "OP_NOT"),
-            OpCode::OpEqual => write!(f, "OP_EQUAL"),
-            OpCode::OpGreater => write!(f, "OP_GREATER"),
-            OpCode::OpLess => write!(f, "OP_LESS")
-        }
-    }
 }
 
 pub struct Chunk {

@@ -136,6 +136,9 @@ dependencies = [
 [[package]]
 name = "sanscript_common"
 version = "0.1.0"
+dependencies = [
+ "strum_macros",
+]
 
 [[package]]
 name = "sanscript_frontend"

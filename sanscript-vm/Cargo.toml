@@ -6,5 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sanscript_common = {path="../SanScript-Common"}
-sanscript_frontend = {path="../SanScript-Frontend"}
+sanscript_common = {path= "../sanscript-common" }
+sanscript_frontend = {path= "../sanscript-frontend" }
