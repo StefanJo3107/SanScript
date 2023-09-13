@@ -1,13 +1,14 @@
 use sanscript_common::{
     chunk::{Chunk, OpCode},
 };
+use sanscript_common::value::Value;
 
 fn main() {
     let mut chunk = Chunk::new();
 
-    let mut const_offset = chunk.add_constant(4.2);
+    let mut const_offset = chunk.add_constant(Value::ValNumber(4.2));
     chunk.write_chunk(OpCode::OpConstant(const_offset), 123);
-    const_offset = chunk.add_constant(2.4);
+    const_offset = chunk.add_constant(Value::ValNumber(2.4));
     chunk.write_chunk(OpCode::OpConstant(const_offset), 124);
     chunk.write_chunk(OpCode::OpNegate, 124);
     chunk.write_chunk(OpCode::OpSubtract, 125);

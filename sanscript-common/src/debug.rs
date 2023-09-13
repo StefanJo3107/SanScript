@@ -49,7 +49,7 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
         //printing instruction name with its operand index
         print!(" {:<16} {:>4} '", opcode, index);
         //printing operand value
-        ValueArray::print_value(*value);
+        ValueArray::print_value(value);
         println!("'");
         offset + size_of::<usize>() + 1
     } else {

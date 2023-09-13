@@ -1,10 +1,11 @@
 pub type Number = f64;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub enum Value {
     ValBool(bool),
     ValNumber(Number),
     ValNil,
+    ValString(String)
 }
 
 pub struct ValueArray {
@@ -28,11 +29,12 @@ impl ValueArray {
         self.values.push(value);
     }
 
-    pub fn print_value(value: Value) {
+    pub fn print_value(value: &Value) {
         match value {
             Value::ValBool(boolean) => print!("\x1B[3m{}\x1B[0m", boolean),
             Value::ValNumber(number) => print!("\x1B[3m{}\x1B[0m", number),
-            Value::ValNil => print!("\x1B[3m{}\x1B[0m", "nil")
+            Value::ValNil => print!("\x1B[3m{}\x1B[0m", "nil"),
+            Value::ValString(string) => print!("\x1B[3m{}\x1B[0m", string)
         }
     }
 }

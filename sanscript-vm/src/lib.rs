@@ -75,7 +75,7 @@ impl VM {
             //printing stack
             for value in self.stack.iter() {
                 print!("[ ");
-                ValueArray::print_value(*value);
+                ValueArray::print_value(value);
                 print!(" ]");
             }
             println!();
@@ -83,12 +83,12 @@ impl VM {
             match instruction
             {
                 OpCode::OpReturn => {
-                    ValueArray::print_value(self.stack.pop().unwrap());
+                    ValueArray::print_value(&self.stack.pop().unwrap());
                     return InterpretOK;
                 }
                 OpCode::OpConstant(constant_addr) => {
                     let constant = self.chunk.get_constant(constant_addr.to_owned());
-                    self.stack.push(*constant);
+                    self.stack.push(constant.to_owned());
                 }
                 OpCode::OpNegate => {
                     if let Some(Value::ValNumber(number)) = self.stack.last() {
@@ -146,7 +146,8 @@ impl VM {
         return match value {
             Value::ValBool(boolean) => !boolean,
             Value::ValNumber(number) => number == 0.0,
-            Value::ValNil => true
+            Value::ValNil => true,
+            _ => false //TODO
         };
     }
 
