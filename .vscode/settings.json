@@ -1,6 +1,0 @@
-{
-    "rust-analyzer.linkedProjects": [
-        ".\\SanVM\\Cargo.toml",
-        ".\\SanScript-Common\\Cargo.toml"
-    ]
-}
