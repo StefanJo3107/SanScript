@@ -46,11 +46,26 @@ impl VM {
         return result;
     }
 
+    fn is_number_operands(&self) -> bool {
+        return matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) && matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_))
+    }
+
+    fn is_string_operands(&self) -> bool{
+        return matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValString(_)) && matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValString(_))
+    }
+
     //most important function so far
     fn run(&mut self) -> InterpretResult {
         macro_rules! binary_op {
+            (Value::ValString, +) => {
+                if let Value::ValString(b) = self.stack.pop().unwrap() {
+                    if let Value::ValString(a) = self.stack.pop().unwrap() {
+                        self.stack.push(Value::ValString(format!("{}{}", a, b)));
+                    }
+                }
+            };
             ($value_type: path,$op: tt) => {
-                if !matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) || !matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_)) {
+                if !self.is_number_operands() {
                     self.runtime_error("Operands must be numbers.");
                     return InterpretRuntimeError;
                 }
@@ -101,7 +116,13 @@ impl VM {
                     }
                 }
                 OpCode::OpAdd => {
-                    binary_op!(Value::ValNumber, +);
+                    if self.is_number_operands() {
+                        binary_op!(Value::ValNumber, +);
+                    }
+
+                    if self.is_string_operands(){
+                        binary_op!(Value::ValString, +);
+                    }
                 }
                 OpCode::OpSubtract => {
                     binary_op!(Value::ValNumber, -);
@@ -156,6 +177,7 @@ impl VM {
             (Value::ValNumber(num_a), Value::ValNumber(num_b)) => num_a == num_b,
             (Value::ValBool(bool_a), Value::ValBool(bool_b)) => bool_a == bool_b,
             (Value::ValNil, Value::ValNil) => true,
+            (Value::ValString(string_a), Value::ValString(string_b)) => string_a==string_b,
             _ => false
         };
     }

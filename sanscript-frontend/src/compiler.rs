@@ -117,7 +117,7 @@ impl<'a> Compiler<'a> {
         add_table_entry!(TokenType::Less, None, Some(Compiler::binary), Precedence::Comparison);
         add_table_entry!(TokenType::LessEqual, None, Some(Compiler::binary), Precedence::Comparison);
         add_table_entry!(TokenType::Identifier, None, None, Precedence::None);
-        add_table_entry!(TokenType::String, None, None, Precedence::None);
+        add_table_entry!(TokenType::String, Some(Compiler::string), None, Precedence::None);
         add_table_entry!(TokenType::Number, Some(Compiler::number), None, Precedence::None);
         add_table_entry!(TokenType::And, None, None, Precedence::None);
         add_table_entry!(TokenType::Else, None, None, Precedence::None);
@@ -229,6 +229,13 @@ impl<'a> Compiler<'a> {
             TokenType::Nil => self.emit_byte(OpCode::OpNil),
             _ => return
         }
+    }
+
+    pub fn string(&mut self) {
+        let value = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
+            .get_token_string(self.source);
+        let string_literal = &value[1..value.len() - 1].to_string();
+        self.emit_constant(Value::ValString(string_literal.to_owned()));
     }
 
     pub fn grouping(&mut self) {

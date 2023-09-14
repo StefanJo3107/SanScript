@@ -51,7 +51,7 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
         //printing operand value
         ValueArray::print_value(value);
         println!("'");
-        offset + size_of::<usize>() + 1
+        offset + size_of::<usize>()
     } else {
         eprintln!("Invalid opcode passed as a constant instruction!");
         exit(1);

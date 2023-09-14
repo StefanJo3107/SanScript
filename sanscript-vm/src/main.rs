@@ -2,7 +2,8 @@ use san_vm::VM;
 use sanscript_frontend::scanner::Scanner;
 
 fn main() {
-    let source = "!(5 - 4 > 3 * 2 == !nil)";
+    // let source = "!(5 - 4 > 3 * 2 == !nil)";
+    let source = "\"abc\"==\"abc\"";
     println!();
     println!("Source code: {}", source);
     println!();
