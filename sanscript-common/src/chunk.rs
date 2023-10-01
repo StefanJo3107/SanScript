@@ -19,7 +19,9 @@ pub enum OpCode {
     OpNot,
     OpEqual,
     OpGreater,
-    OpLess
+    OpLess,
+    OpPrint,
+    OpPop
 }
 
 pub struct Chunk {

@@ -98,8 +98,14 @@ impl VM {
             match instruction
             {
                 OpCode::OpReturn => {
-                    ValueArray::print_value(&self.stack.pop().unwrap());
                     return InterpretOK;
+                }
+                OpCode::OpPrint => {
+                    ValueArray::print_value(&self.stack.pop().unwrap_or_else(||{Value::ValString(String::from(""))}));
+                    println!();
+                }
+                OpCode::OpPop => {
+                    self.stack.pop();
                 }
                 OpCode::OpConstant(constant_addr) => {
                     let constant = self.chunk.get_constant(constant_addr.to_owned());

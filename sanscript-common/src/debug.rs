@@ -34,7 +34,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
     match instruction {
         OpCode::OpReturn | OpCode::OpNegate | OpCode::OpAdd | OpCode::OpSubtract | OpCode::OpMultiply
         | OpCode::OpDivide | OpCode::OpTrue | OpCode::OpFalse | OpCode::OpNil | OpCode::OpNot
-        | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess => simple_instruction(instruction, print_offset),
+        | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess | OpCode::OpPrint | OpCode::OpPop => simple_instruction(instruction, print_offset),
         OpCode::OpConstant(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
     }
 }

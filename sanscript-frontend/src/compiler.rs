@@ -146,13 +146,53 @@ impl<'a> Compiler<'a> {
         self.compiling_chunk = Some(chunk);
 
         self.parser.advance(self.scanner.clone());
-        self.expression();
-        self.parser.consume(TokenType::EOF, "Expect end of expression.".to_string(), self.scanner.clone());
+        // self.expression();
+        // self.parser.consume(TokenType::EOF, "Expect end of expression.".to_string(), self.scanner.clone());
+        while !self.match_token(TokenType::EOF) {
+            self.declaration();
+        }
 
         self.end_compiler();
         return !self.parser.had_error;
     }
 
+    fn declaration(&mut self) {
+        self.statement();
+    }
+
+    fn statement(&mut self) {
+        if self.match_token(TokenType::Print) {
+            self.print_statement();
+        } else {
+            self.expression_statement();
+        }
+    }
+
+    fn match_token(&mut self, token_type: TokenType) -> bool {
+        if !self.check_token(token_type) {
+            return false;
+        }
+        self.parser.advance(self.scanner.clone());
+        true
+    }
+
+    fn check_token(&self, token_type: TokenType) -> bool {
+        let current_token = self.parser.current.as_ref().unwrap_or_else(|| { panic!("Parser does not have current token processed!") });
+        let current_type = current_token.token_type.clone();
+        return current_type == token_type;
+    }
+
+    fn print_statement(&mut self){
+        self.expression();
+        self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
+        self.emit_byte(OpCode::OpPrint);
+    }
+
+    fn expression_statement(&mut self) {
+        self.expression();
+        self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
+        self.emit_byte(OpCode::OpPop);
+    }
     pub fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);
     }
