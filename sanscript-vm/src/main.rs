@@ -8,7 +8,7 @@ fn main() {
     print !(5 - 4 > 3 * 2 == !nil);
     print 4/3;
     print \" \";
-    3+2;";
+    let a = 3+2;";
     // let source = "print 3+(2*(4/3));";
     println!();
     println!("Source code: {}", source);

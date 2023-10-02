@@ -7,7 +7,7 @@ use sanscript_common::value::{Number, Value};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
 use crate::ScannerRef;
-use crate::token::TokenType;
+use crate::token::{Token, TokenType};
 use strum::EnumCount;
 
 #[repr(usize)]
@@ -146,8 +146,7 @@ impl<'a> Compiler<'a> {
         self.compiling_chunk = Some(chunk);
 
         self.parser.advance(self.scanner.clone());
-        // self.expression();
-        // self.parser.consume(TokenType::EOF, "Expect end of expression.".to_string(), self.scanner.clone());
+
         while !self.match_token(TokenType::EOF) {
             self.declaration();
         }
@@ -157,7 +156,39 @@ impl<'a> Compiler<'a> {
     }
 
     fn declaration(&mut self) {
-        self.statement();
+        if self.match_token(TokenType::Let){
+            self.variable_declaration();
+        } else {
+            self.statement();
+        }
+    }
+
+    fn variable_declaration(&mut self){
+        let global = self.parse_variable("Expect variable name");
+
+        if self.match_token(TokenType::Equal){
+            self.expression();
+        }else{
+            self.emit_byte(OpCode::OpNil);
+        }
+
+        self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
+        self.define_variable(global);
+    }
+
+    fn parse_variable(&mut self, error_msg: &str) -> usize{
+        self.parser.consume(TokenType::Identifier, String::from(error_msg), self.scanner.clone());
+        let identifier = self.parser.previous.as_ref().unwrap_or_else(||{panic!("Parser does not have processed token!")});
+        return self.identifier_constant(identifier.clone());
+    }
+
+    fn identifier_constant(&mut self, identifier: Token) -> usize {
+        let token_string = identifier.get_token_string(self.source);
+        self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") }).add_constant(Value::ValString(token_string))
+    }
+
+    fn define_variable(&mut self, global: usize) {
+        self.emit_byte(OpCode::OpDefineGlobal(global));
     }
 
     fn statement(&mut self) {

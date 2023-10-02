@@ -8,6 +8,7 @@ use strum_macros::Display;
 pub enum OpCode {
     OpReturn,
     OpConstant(usize),
+    OpDefineGlobal(usize),
     OpNegate,
     OpAdd,
     OpSubtract,

@@ -35,7 +35,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
         OpCode::OpReturn | OpCode::OpNegate | OpCode::OpAdd | OpCode::OpSubtract | OpCode::OpMultiply
         | OpCode::OpDivide | OpCode::OpTrue | OpCode::OpFalse | OpCode::OpNil | OpCode::OpNot
         | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess | OpCode::OpPrint | OpCode::OpPop => simple_instruction(instruction, print_offset),
-        OpCode::OpConstant(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
+        OpCode::OpConstant(value) | OpCode::OpDefineGlobal(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
     }
 }
 
@@ -52,7 +52,15 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
         ValueArray::print_value(value);
         println!("'");
         offset + size_of::<usize>()
-    } else {
+    } else if let OpCode::OpDefineGlobal(index) = opcode{
+        //TODO refactor code duplication
+        print!(" {:<16} {:>4} '", opcode, index);
+        //printing operand value
+        ValueArray::print_value(value);
+        println!("'");
+        offset + size_of::<usize>()
+    }
+    else {
         eprintln!("Invalid opcode passed as a constant instruction!");
         exit(1);
     }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
@@ -16,6 +17,7 @@ pub struct VM {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Value>,
+    globals: HashMap<String, Value>
 }
 
 impl VM {
@@ -24,6 +26,7 @@ impl VM {
             chunk: Chunk::new(),
             ip: 0,
             stack: vec![],
+            globals: HashMap::new()
         }
     }
 
@@ -110,6 +113,12 @@ impl VM {
                 OpCode::OpConstant(constant_addr) => {
                     let constant = self.chunk.get_constant(constant_addr.to_owned());
                     self.stack.push(constant.to_owned());
+                }
+                OpCode::OpDefineGlobal(global_addr) => {
+                    let name_value = self.chunk.get_constant(global_addr.to_owned());
+                    if let Value::ValString(name) = name_value{
+                        self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(||{panic!("Stack is empty, cannot define global variable")}));
+                    }
                 }
                 OpCode::OpNegate => {
                     if let Some(Value::ValNumber(number)) = self.stack.last() {
