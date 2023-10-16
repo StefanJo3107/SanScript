@@ -9,6 +9,7 @@ pub enum OpCode {
     OpReturn,
     OpConstant(usize),
     OpDefineGlobal(usize),
+    OpGetGlobal(usize),
     OpNegate,
     OpAdd,
     OpSubtract,
@@ -51,6 +52,16 @@ impl Chunk {
 
     pub fn get_constant(&self, offset: usize) -> &Value{
         self.constants.get(offset)
+    }
+
+    pub fn has_constant(&self, constant: &Value) -> isize {
+        for i in 0..self.constants.len(){
+            if self.constants.get(i) == constant{
+                return i as isize;
+            }
+        }
+
+        return -1;
     }
 
     pub fn add_constant(&mut self, constant: Value) -> usize{

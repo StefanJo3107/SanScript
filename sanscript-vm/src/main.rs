@@ -3,12 +3,15 @@ use sanscript_frontend::scanner::Scanner;
 
 fn main() {
     // let source = "!(5 - 4 > 3 * 2 == !nil)";
-    let source = "print \"abc\"==\"abc\";
-    print 2+3;
-    print !(5 - 4 > 3 * 2 == !nil);
-    print 4/3;
-    print \" \";
-    let a = 3+2;";
+    // let source = "print \"abc\"==\"abc\";
+    // print 2+3;
+    // print !(5 - 4 > 3 * 2 == !nil);
+    // print 4/3;
+    // print \" \";
+    // let a = 3+2;";
+    let source = "let second = \"trigger\";
+    let game = \"chrono \" + second;
+    print game;";
     // let source = "print 3+(2*(4/3));";
     println!();
     println!("Source code: {}", source);

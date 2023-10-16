@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::format;
 use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
@@ -17,7 +18,7 @@ pub struct VM {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Value>,
-    globals: HashMap<String, Value>
+    globals: HashMap<String, Value>,
 }
 
 impl VM {
@@ -26,7 +27,7 @@ impl VM {
             chunk: Chunk::new(),
             ip: 0,
             stack: vec![],
-            globals: HashMap::new()
+            globals: HashMap::new(),
         }
     }
 
@@ -50,11 +51,11 @@ impl VM {
     }
 
     fn is_number_operands(&self) -> bool {
-        return matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) && matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_))
+        return matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValNumber(_)) && matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValNumber(_));
     }
 
-    fn is_string_operands(&self) -> bool{
-        return matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValString(_)) && matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValString(_))
+    fn is_string_operands(&self) -> bool {
+        return matches!(self.stack.last().unwrap_or_else(|| {panic!("Error reading last element of the stack!")}), Value::ValString(_)) && matches!(self.stack.get(self.stack.len() - 2).unwrap_or_else(||{panic!("Error reading second to last element of the stack!");}), Value::ValString(_));
     }
 
     //most important function so far
@@ -104,7 +105,7 @@ impl VM {
                     return InterpretOK;
                 }
                 OpCode::OpPrint => {
-                    ValueArray::print_value(&self.stack.pop().unwrap_or_else(||{Value::ValString(String::from(""))}));
+                    ValueArray::print_value(&self.stack.pop().unwrap_or_else(|| { Value::ValString(String::from("")) }));
                     println!();
                 }
                 OpCode::OpPop => {
@@ -116,8 +117,19 @@ impl VM {
                 }
                 OpCode::OpDefineGlobal(global_addr) => {
                     let name_value = self.chunk.get_constant(global_addr.to_owned());
-                    if let Value::ValString(name) = name_value{
-                        self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(||{panic!("Stack is empty, cannot define global variable")}));
+                    if let Value::ValString(name) = name_value {
+                        self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
+                    }
+                }
+                OpCode::OpGetGlobal(global_addr) => {
+                    let name_value = self.chunk.get_constant(global_addr.to_owned());
+                    if let Value::ValString(name) = name_value {
+                        if let Some(var_value) = self.globals.get(name){
+                            self.stack.push(var_value.to_owned());
+                        }else{
+                            self.runtime_error(format!("Undefined variable '{}'", name).as_str());
+                            return InterpretRuntimeError;
+                        }
                     }
                 }
                 OpCode::OpNegate => {
@@ -135,7 +147,7 @@ impl VM {
                         binary_op!(Value::ValNumber, +);
                     }
 
-                    if self.is_string_operands(){
+                    if self.is_string_operands() {
                         binary_op!(Value::ValString, +);
                     }
                 }
@@ -192,7 +204,7 @@ impl VM {
             (Value::ValNumber(num_a), Value::ValNumber(num_b)) => num_a == num_b,
             (Value::ValBool(bool_a), Value::ValBool(bool_b)) => bool_a == bool_b,
             (Value::ValNil, Value::ValNil) => true,
-            (Value::ValString(string_a), Value::ValString(string_b)) => string_a==string_b,
+            (Value::ValString(string_a), Value::ValString(string_b)) => string_a == string_b,
             _ => false
         };
     }

@@ -1,6 +1,6 @@
 pub type Number = f64;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Value {
     ValBool(bool),
     ValNumber(Number),

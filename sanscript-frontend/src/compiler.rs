@@ -116,7 +116,7 @@ impl<'a> Compiler<'a> {
         add_table_entry!(TokenType::GreaterEqual, None, Some(Compiler::binary), Precedence::Comparison);
         add_table_entry!(TokenType::Less, None, Some(Compiler::binary), Precedence::Comparison);
         add_table_entry!(TokenType::LessEqual, None, Some(Compiler::binary), Precedence::Comparison);
-        add_table_entry!(TokenType::Identifier, None, None, Precedence::None);
+        add_table_entry!(TokenType::Identifier, Some(Compiler::variable), None, Precedence::None);
         add_table_entry!(TokenType::String, Some(Compiler::string), None, Precedence::None);
         add_table_entry!(TokenType::Number, Some(Compiler::number), None, Precedence::None);
         add_table_entry!(TokenType::And, None, None, Precedence::None);
@@ -156,19 +156,19 @@ impl<'a> Compiler<'a> {
     }
 
     fn declaration(&mut self) {
-        if self.match_token(TokenType::Let){
+        if self.match_token(TokenType::Let) {
             self.variable_declaration();
         } else {
             self.statement();
         }
     }
 
-    fn variable_declaration(&mut self){
+    fn variable_declaration(&mut self) {
         let global = self.parse_variable("Expect variable name");
 
-        if self.match_token(TokenType::Equal){
+        if self.match_token(TokenType::Equal) {
             self.expression();
-        }else{
+        } else {
             self.emit_byte(OpCode::OpNil);
         }
 
@@ -176,15 +176,21 @@ impl<'a> Compiler<'a> {
         self.define_variable(global);
     }
 
-    fn parse_variable(&mut self, error_msg: &str) -> usize{
+    fn parse_variable(&mut self, error_msg: &str) -> usize {
         self.parser.consume(TokenType::Identifier, String::from(error_msg), self.scanner.clone());
-        let identifier = self.parser.previous.as_ref().unwrap_or_else(||{panic!("Parser does not have processed token!")});
+        let identifier = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") });
         return self.identifier_constant(identifier.clone());
     }
 
     fn identifier_constant(&mut self, identifier: Token) -> usize {
         let token_string = identifier.get_token_string(self.source);
-        self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") }).add_constant(Value::ValString(token_string))
+        let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
+        let ident_value = Value::ValString(token_string);
+        let offset = chunk.has_constant(&ident_value);
+        if offset == -1 {
+            return chunk.add_constant(ident_value);
+        }
+        return offset as usize;
     }
 
     fn define_variable(&mut self, global: usize) {
@@ -213,7 +219,7 @@ impl<'a> Compiler<'a> {
         return current_type == token_type;
     }
 
-    fn print_statement(&mut self){
+    fn print_statement(&mut self) {
         self.expression();
         self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
         self.emit_byte(OpCode::OpPrint);
@@ -281,8 +287,13 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn emit_constant(&mut self, value: Value) {
-        let offset = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") }).add_constant(value);
-        self.emit_byte(OpConstant(offset));
+        let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
+        let mut offset = chunk.has_constant(&value);
+        if offset == -1 {
+            offset = chunk.add_constant(value) as isize;
+        }
+
+        self.emit_byte(OpConstant(offset as usize));
     }
 
     pub fn number(&mut self) {
@@ -346,5 +357,14 @@ impl<'a> Compiler<'a> {
             TokenType::LessEqual => self.emit_bytes(&[OpCode::OpGreater, OpCode::OpNot]),
             _ => return
         }
+    }
+
+    pub fn variable(&mut self) {
+        self.named_variable(self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).clone());
+    }
+
+    pub fn named_variable(&mut self, identifier: Token) {
+        let arg = self.identifier_constant(identifier);
+        self.emit_byte(OpCode::OpGetGlobal(arg));
     }
 }
