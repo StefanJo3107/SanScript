@@ -3,6 +3,7 @@ use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
 use sanscript_frontend::compiler::Compiler;
+use sanscript_frontend::scanner::Scanner;
 use crate::InterpretResult::{InterpretCompileError, InterpretOK, InterpretRuntimeError};
 
 pub enum InterpretResult {
@@ -11,22 +12,33 @@ pub enum InterpretResult {
     InterpretRuntimeError,
 }
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum DebugLevel {
+    None,
+    TokenTableOnly,
+    BytecodeOnly,
+    Verbose,
+}
+
 const STACK_SIZE: usize = 256;
+
 
 pub struct VM {
     chunk: Chunk,
     ip: usize,
     stack: Vec<Value>,
     globals: HashMap<String, Value>,
+    debug_level: DebugLevel,
 }
 
 impl VM {
-    pub fn new() -> VM {
+    pub fn new(debug_level: DebugLevel) -> VM {
         VM {
             chunk: Chunk::new(),
             ip: 0,
             stack: vec![],
             globals: HashMap::new(),
+            debug_level,
         }
     }
 
@@ -35,6 +47,11 @@ impl VM {
     // }
 
     pub fn interpret(&mut self, source: String) -> InterpretResult {
+        if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::TokenTableOnly {
+            let mut scanner = Scanner::new(source.as_str());
+            scanner.tokenize_source();
+        }
+
         let mut chunk = Chunk::new();
         let mut compiler = Compiler::new(source.as_str());
 
@@ -80,23 +97,28 @@ impl VM {
             }
         }
 
-        //printing disassembler header
-        println!("\x1B[4mOFFSET |  LINE  | {: <30}\x1B[0m", "OPCODE");
+        if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
+            //printing disassembler header
+            println!("\x1B[4mOFFSET |  LINE  | {: <30}\x1B[0m", "OPCODE");
+        }
+
         let mut print_offset = 0;
 
         loop {
             let instruction: &OpCode = self.chunk.get_code(self.ip);
 
-            print!("{:0>6} |", print_offset);
-            print_offset = disassemble_instruction(&self.chunk, self.ip, print_offset);
+            if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
+                print!("{:0>6} |", print_offset);
+                print_offset = disassemble_instruction(&self.chunk, self.ip, print_offset);
 
-            //printing stack
-            for value in self.stack.iter() {
-                print!("[ ");
-                ValueArray::print_value(value);
-                print!(" ]");
+                //printing stack
+                for value in self.stack.iter() {
+                    print!("[ ");
+                    ValueArray::print_value(value);
+                    print!(" ]");
+                }
+                println!();
             }
-            println!();
 
             match instruction
             {
@@ -123,9 +145,9 @@ impl VM {
                 OpCode::OpGetGlobal(global_addr) => {
                     let name_value = self.chunk.get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
-                        if let Some(var_value) = self.globals.get(name){
+                        if let Some(var_value) = self.globals.get(name) {
                             self.stack.push(var_value.to_owned());
-                        }else{
+                        } else {
                             self.runtime_error(format!("Undefined variable '{}'", name).as_str());
                             return InterpretRuntimeError;
                         }
@@ -134,9 +156,9 @@ impl VM {
                 OpCode::OpSetGlobal(global_addr) => {
                     let name_value = self.chunk.get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
-                        if let Some(_) = self.globals.get(name){
+                        if let Some(_) = self.globals.get(name) {
                             self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
-                        }else{
+                        } else {
                             self.runtime_error(format!("Undefined variable '{}'", name).as_str());
                             return InterpretRuntimeError;
                         }

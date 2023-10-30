@@ -303,13 +303,13 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpConstant(offset as usize));
     }
 
-    pub fn number(&mut self, can_assign: bool) {
+    pub fn number(&mut self, _can_assign: bool) {
         let value: Number = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
             .get_token_string(self.source).parse::<Number>().unwrap_or_else(|_| { panic!("Could not parse token value to number!") });
         self.emit_constant(Value::ValNumber(value));
     }
 
-    pub fn literal(&mut self, can_assign: bool) {
+    pub fn literal(&mut self, _can_assign: bool) {
         let token_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
 
         match token_type {
@@ -320,19 +320,19 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn string(&mut self, can_assign: bool) {
+    pub fn string(&mut self, _can_assign: bool) {
         let value = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
             .get_token_string(self.source);
         let string_literal = &value[1..value.len() - 1].to_string();
         self.emit_constant(Value::ValString(string_literal.to_owned()));
     }
 
-    pub fn grouping(&mut self, can_assign: bool) {
+    pub fn grouping(&mut self, _can_assign: bool) {
         self.expression();
         self.parser.consume(TokenType::RightParen, String::from("Expect ')' after expression"), self.scanner.clone());
     }
 
-    pub fn unary(&mut self, can_assign: bool) {
+    pub fn unary(&mut self, _can_assign: bool) {
         let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone();
 
         self.parse_precedence(Precedence::Unary);
@@ -344,7 +344,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn binary(&mut self, can_assign: bool) {
+    pub fn binary(&mut self, _can_assign: bool) {
         let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
         let token_index: usize = operator_type.clone().into();
         let rule = self.rules.get(token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", operator_type.clone()) });
