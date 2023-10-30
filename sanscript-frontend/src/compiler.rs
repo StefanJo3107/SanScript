@@ -35,7 +35,7 @@ enum Precedence {
     Primary,
 }
 
-type ParseFn<'a> = fn(&mut Compiler<'a>);
+type ParseFn<'a> = fn(&mut Compiler<'a>, bool);
 
 #[derive(Copy, Clone)]
 struct ParseRule<'a> {
@@ -238,8 +238,10 @@ impl<'a> Compiler<'a> {
         self.parser.advance(self.scanner.clone());
         let previous_token: usize = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone().into();
         let prefix_rule = self.rules[previous_token].prefix;
+
+        let can_assign = precedence as usize <= Precedence::Assignment as usize;
         if let Some(prefix) = prefix_rule {
-            prefix(self);
+            prefix(self, can_assign);
         } else {
             self.parser.error(String::from("Expect expression."), self.source);
             return;
@@ -248,12 +250,13 @@ impl<'a> Compiler<'a> {
         let mut current_token_type = self.parser.current.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
         let mut current_token_index: usize = current_token_type.clone().into();
         let mut current_token_precedence = self.rules.get(current_token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", current_token_type.clone()) }).precedence;
+
         while precedence as usize <= current_token_precedence as usize {
             self.parser.advance(self.scanner.clone());
             let previous_token: usize = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone().into();
             let infix_rule = self.rules[previous_token].infix;
             if let Some(infix) = infix_rule {
-                infix(self);
+                infix(self, can_assign);
             } else {
                 break;
             }
@@ -261,6 +264,10 @@ impl<'a> Compiler<'a> {
             current_token_type = self.parser.current.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
             current_token_index = current_token_type.clone().into();
             current_token_precedence = self.rules.get(current_token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", current_token_type.clone()) }).precedence;
+        }
+
+        if can_assign && self.match_token(TokenType::Equal){
+            self.parser.error(String::from("Invalid assignment target"), self.source);
         }
     }
 
@@ -296,13 +303,13 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpConstant(offset as usize));
     }
 
-    pub fn number(&mut self) {
+    pub fn number(&mut self, can_assign: bool) {
         let value: Number = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
             .get_token_string(self.source).parse::<Number>().unwrap_or_else(|_| { panic!("Could not parse token value to number!") });
         self.emit_constant(Value::ValNumber(value));
     }
 
-    pub fn literal(&mut self) {
+    pub fn literal(&mut self, can_assign: bool) {
         let token_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
 
         match token_type {
@@ -313,19 +320,19 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn string(&mut self) {
+    pub fn string(&mut self, can_assign: bool) {
         let value = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
             .get_token_string(self.source);
         let string_literal = &value[1..value.len() - 1].to_string();
         self.emit_constant(Value::ValString(string_literal.to_owned()));
     }
 
-    pub fn grouping(&mut self) {
+    pub fn grouping(&mut self, can_assign: bool) {
         self.expression();
         self.parser.consume(TokenType::RightParen, String::from("Expect ')' after expression"), self.scanner.clone());
     }
 
-    pub fn unary(&mut self) {
+    pub fn unary(&mut self, can_assign: bool) {
         let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone();
 
         self.parse_precedence(Precedence::Unary);
@@ -337,7 +344,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn binary(&mut self) {
+    pub fn binary(&mut self, can_assign: bool) {
         let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
         let token_index: usize = operator_type.clone().into();
         let rule = self.rules.get(token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", operator_type.clone()) });
@@ -359,12 +366,17 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn variable(&mut self) {
-        self.named_variable(self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).clone());
+    pub fn variable(&mut self, can_assign: bool) {
+        self.named_variable(self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).clone(), can_assign);
     }
 
-    pub fn named_variable(&mut self, identifier: Token) {
+    pub fn named_variable(&mut self, identifier: Token, can_assign: bool) {
         let arg = self.identifier_constant(identifier);
-        self.emit_byte(OpCode::OpGetGlobal(arg));
+        if can_assign && self.match_token(TokenType::Equal) {
+            self.expression();
+            self.emit_byte(OpCode::OpSetGlobal(arg));
+        } else {
+            self.emit_byte(OpCode::OpGetGlobal(arg));
+        }
     }
 }

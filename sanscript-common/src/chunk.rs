@@ -4,12 +4,13 @@ use strum_macros::Display;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Display, Debug)]
-#[strum(serialize_all="SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum OpCode {
     OpReturn,
     OpConstant(usize),
     OpDefineGlobal(usize),
     OpGetGlobal(usize),
+    OpSetGlobal(usize),
     OpNegate,
     OpAdd,
     OpSubtract,
@@ -23,13 +24,13 @@ pub enum OpCode {
     OpGreater,
     OpLess,
     OpPrint,
-    OpPop
+    OpPop,
 }
 
 pub struct Chunk {
     code: Vec<OpCode>,
     constants: ValueArray,
-    lines: Vec<usize>
+    lines: Vec<usize>,
 }
 
 impl Chunk {
@@ -50,13 +51,13 @@ impl Chunk {
         self.lines.push(line);
     }
 
-    pub fn get_constant(&self, offset: usize) -> &Value{
+    pub fn get_constant(&self, offset: usize) -> &Value {
         self.constants.get(offset)
     }
 
     pub fn has_constant(&self, constant: &Value) -> isize {
-        for i in 0..self.constants.len(){
-            if self.constants.get(i) == constant{
+        for i in 0..self.constants.len() {
+            if self.constants.get(i) == constant {
                 return i as isize;
             }
         }
@@ -64,12 +65,12 @@ impl Chunk {
         return -1;
     }
 
-    pub fn add_constant(&mut self, constant: Value) -> usize{
+    pub fn add_constant(&mut self, constant: Value) -> usize {
         self.constants.write_constant(constant);
         self.constants.len() - 1
     }
 
-    pub fn get_line(&self, offset: usize) -> usize{
+    pub fn get_line(&self, offset: usize) -> usize {
         self.lines[offset]
     }
 }

@@ -35,7 +35,8 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
         OpCode::OpReturn | OpCode::OpNegate | OpCode::OpAdd | OpCode::OpSubtract | OpCode::OpMultiply
         | OpCode::OpDivide | OpCode::OpTrue | OpCode::OpFalse | OpCode::OpNil | OpCode::OpNot
         | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess | OpCode::OpPrint | OpCode::OpPop => simple_instruction(instruction, print_offset),
-        OpCode::OpConstant(value) | OpCode::OpDefineGlobal(value) | OpCode::OpGetGlobal(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
+        OpCode::OpConstant(value) | OpCode::OpDefineGlobal(value) | OpCode::OpGetGlobal(value)
+        | OpCode::OpSetGlobal(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
     }
 }
 
@@ -45,29 +46,17 @@ fn simple_instruction(opcode: &OpCode, offset: usize) -> usize {
 }
 
 fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize {
-    if let OpCode::OpConstant(index) = opcode {
-        //printing instruction name with its operand index
-        print!(" {:<16} {:>4} '", opcode, index);
-        //printing operand value
-        ValueArray::print_value(value);
-        println!("'");
-        offset + size_of::<usize>()
-    } else if let OpCode::OpDefineGlobal(index) = opcode {
-        //TODO refactor code duplication
-        print!(" {:<16} {:>4} '", opcode, index);
-        //printing operand value
-        ValueArray::print_value(value);
-        println!("'");
-        offset + size_of::<usize>()
-    } else if let OpCode::OpGetGlobal(index) = opcode {
-        //TODO refactor code duplication
-        print!(" {:<16} {:>4} '", opcode, index);
-        //printing operand value
-        ValueArray::print_value(value);
-        println!("'");
-        offset + size_of::<usize>()
-    } else {
-        eprintln!("Invalid opcode passed as a constant instruction!");
-        exit(1);
+    match opcode {
+        OpCode::OpConstant(index) | OpCode::OpDefineGlobal(index) | OpCode::OpGetGlobal(index) | OpCode::OpSetGlobal(index) => {
+            print!(" {:<16} {:>4} '", opcode, index);
+            //printing operand value
+            ValueArray::print_value(value);
+            println!("'");
+            offset + size_of::<usize>()
+        }
+        _ => {
+            eprintln!("Invalid opcode passed as a constant instruction!");
+            exit(1);
+        }
     }
 }

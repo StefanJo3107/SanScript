@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fmt::format;
 use sanscript_common::chunk::{Chunk, OpCode};
 use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
@@ -126,6 +125,17 @@ impl VM {
                     if let Value::ValString(name) = name_value {
                         if let Some(var_value) = self.globals.get(name){
                             self.stack.push(var_value.to_owned());
+                        }else{
+                            self.runtime_error(format!("Undefined variable '{}'", name).as_str());
+                            return InterpretRuntimeError;
+                        }
+                    }
+                }
+                OpCode::OpSetGlobal(global_addr) => {
+                    let name_value = self.chunk.get_constant(global_addr.to_owned());
+                    if let Value::ValString(name) = name_value {
+                        if let Some(_) = self.globals.get(name){
+                            self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
                         }else{
                             self.runtime_error(format!("Undefined variable '{}'", name).as_str());
                             return InterpretRuntimeError;

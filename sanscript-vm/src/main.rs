@@ -9,8 +9,8 @@ fn main() {
     // print 4/3;
     // print \" \";
     // let a = 3+2;";
-    let source = "let second = \"trigger\";
-    let game = \"chrono \" + second;
+    let source = "let game = \"chrono\";
+    game = game + \" trigger\";
     print game;";
     // let source = "print 3+(2*(4/3));";
     println!();
