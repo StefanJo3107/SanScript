@@ -44,12 +44,19 @@ struct ParseRule<'a> {
     pub precedence: Precedence,
 }
 
+pub struct Local {
+    token: TokenType,
+    depth: usize,
+}
+
 pub struct Compiler<'a> {
     parser: Parser,
     compiling_chunk: Option<&'a mut Chunk>,
     rules: Vec<ParseRule<'a>>,
     scanner: ScannerRef<'a>,
     source: &'a str,
+    locals: Vec<Local>,
+    scope_depth: usize,
 }
 
 impl<'a> Compiler<'a> {
@@ -60,6 +67,8 @@ impl<'a> Compiler<'a> {
             rules: vec![ParseRule { infix: None, prefix: None, precedence: Precedence::None }; TokenType::COUNT + 1],
             scanner: Rc::new(RefCell::new(Scanner::new(source))),
             source,
+            locals: vec![],
+            scope_depth: 0
         };
 
         macro_rules! add_table_entry {
@@ -200,9 +209,30 @@ impl<'a> Compiler<'a> {
     fn statement(&mut self) {
         if self.match_token(TokenType::Print) {
             self.print_statement();
+        } else if self.match_token(TokenType::LeftBrace)
+        {
+            self.begin_scope();
+            self.block();
+            self.end_scope();
         } else {
             self.expression_statement();
         }
+    }
+
+    fn begin_scope(&mut self) {
+        self.scope_depth += 1;
+    }
+
+    fn end_scope(&mut self) {
+        self.scope_depth -= 1;
+    }
+
+    fn block(&mut self) {
+        while !self.check_token(TokenType::RightBrace) && !self.check_token(TokenType::EOF){
+            self.declaration();
+        }
+
+        self.parser.consume(TokenType::RightBrace, String::from("Expect '}' after block."), self.scanner.clone());
     }
 
     fn match_token(&mut self, token_type: TokenType) -> bool {
@@ -266,7 +296,7 @@ impl<'a> Compiler<'a> {
             current_token_precedence = self.rules.get(current_token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", current_token_type.clone()) }).precedence;
         }
 
-        if can_assign && self.match_token(TokenType::Equal){
+        if can_assign && self.match_token(TokenType::Equal) {
             self.parser.error(String::from("Invalid assignment target"), self.source);
         }
     }
