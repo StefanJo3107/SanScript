@@ -44,9 +44,10 @@ struct ParseRule<'a> {
     pub precedence: Precedence,
 }
 
+#[derive(Debug)]
 pub struct Local {
-    token: TokenType,
-    depth: usize,
+    token: Token,
+    depth: isize,
 }
 
 pub struct Compiler<'a> {
@@ -56,7 +57,7 @@ pub struct Compiler<'a> {
     scanner: ScannerRef<'a>,
     source: &'a str,
     locals: Vec<Local>,
-    scope_depth: usize,
+    scope_depth: isize,
 }
 
 impl<'a> Compiler<'a> {
@@ -68,7 +69,7 @@ impl<'a> Compiler<'a> {
             scanner: Rc::new(RefCell::new(Scanner::new(source))),
             source,
             locals: vec![],
-            scope_depth: 0
+            scope_depth: 0,
         };
 
         macro_rules! add_table_entry {
@@ -187,8 +188,18 @@ impl<'a> Compiler<'a> {
 
     fn parse_variable(&mut self, error_msg: &str) -> usize {
         self.parser.consume(TokenType::Identifier, String::from(error_msg), self.scanner.clone());
+        self.declare_variable();
+        if self.scope_depth > 0 {
+            return 0;
+        }
+
         let identifier = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") });
         return self.identifier_constant(identifier.clone());
+    }
+
+    fn mark_initialized(&mut self){
+        let local = self.locals.last_mut().unwrap_or_else(||{panic!("Locals array is empty!")});
+        local.depth = self.scope_depth;
     }
 
     fn identifier_constant(&mut self, identifier: Token) -> usize {
@@ -203,7 +214,45 @@ impl<'a> Compiler<'a> {
     }
 
     fn define_variable(&mut self, global: usize) {
+        if self.scope_depth > 0 {
+            self.mark_initialized();
+            return;
+        }
+
         self.emit_byte(OpCode::OpDefineGlobal(global));
+    }
+
+    fn declare_variable(&mut self) {
+        if self.scope_depth == 0 {
+            return;
+        }
+
+        let variable = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).clone();
+
+        for local in &self.locals {
+            if local.depth != -1 && local.depth < self.scope_depth {
+                break;
+            }
+
+            if self.identifiers_equal(&variable, &local.token) {
+                self.parser.error(String::from("Variable redeclaration in the same scope"), self.source);
+            }
+        }
+
+        self.add_local(variable);
+    }
+
+    fn identifiers_equal(&self, a: &Token, b: &Token) -> bool {
+        return a.get_token_string(self.source) == b.get_token_string(self.source);
+    }
+
+    fn add_local(&mut self, token: Token) {
+        let local: Local = Local {
+            token,
+            depth: -1,
+        };
+
+        self.locals.push(local);
     }
 
     fn statement(&mut self) {
@@ -225,10 +274,17 @@ impl<'a> Compiler<'a> {
 
     fn end_scope(&mut self) {
         self.scope_depth -= 1;
+
+        for i in (0..self.locals.len()).rev() {
+            if self.locals.get(i).unwrap_or_else(||{panic!("No local variable with given index")}).depth >=self.scope_depth + 1 {
+                self.locals.remove(i);
+                self.emit_byte(OpCode::OpPop);
+            }
+        }
     }
 
     fn block(&mut self) {
-        while !self.check_token(TokenType::RightBrace) && !self.check_token(TokenType::EOF){
+        while !self.check_token(TokenType::RightBrace) && !self.check_token(TokenType::EOF) {
             self.declaration();
         }
 
@@ -301,17 +357,17 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn end_compiler(&mut self) {
+    fn end_compiler(&mut self) {
         self.emit_return();
     }
 
-    pub fn emit_byte(&mut self, byte: OpCode) {
+    fn emit_byte(&mut self, byte: OpCode) {
         self.compiling_chunk.as_mut()
             .unwrap_or_else(|| { panic!("Current chunk is not set!") })
             .write_chunk(byte, self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).line);
     }
 
-    pub fn emit_bytes(&mut self, bytes: &[OpCode]) {
+    fn emit_bytes(&mut self, bytes: &[OpCode]) {
         for byte in bytes {
             self.compiling_chunk.as_mut()
                 .unwrap_or_else(|| { panic!("Current chunk is not set!") })
@@ -319,11 +375,11 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn emit_return(&mut self) {
+    fn emit_return(&mut self) {
         self.emit_byte(OpCode::OpReturn);
     }
 
-    pub fn emit_constant(&mut self, value: Value) {
+    fn emit_constant(&mut self, value: Value) {
         let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
         let mut offset = chunk.has_constant(&value);
         if offset == -1 {
@@ -333,13 +389,13 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpConstant(offset as usize));
     }
 
-    pub fn number(&mut self, _can_assign: bool) {
+    fn number(&mut self, _can_assign: bool) {
         let value: Number = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
             .get_token_string(self.source).parse::<Number>().unwrap_or_else(|_| { panic!("Could not parse token value to number!") });
         self.emit_constant(Value::ValNumber(value));
     }
 
-    pub fn literal(&mut self, _can_assign: bool) {
+    fn literal(&mut self, _can_assign: bool) {
         let token_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
 
         match token_type {
@@ -350,19 +406,19 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn string(&mut self, _can_assign: bool) {
+    fn string(&mut self, _can_assign: bool) {
         let value = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
             .get_token_string(self.source);
         let string_literal = &value[1..value.len() - 1].to_string();
         self.emit_constant(Value::ValString(string_literal.to_owned()));
     }
 
-    pub fn grouping(&mut self, _can_assign: bool) {
+    fn grouping(&mut self, _can_assign: bool) {
         self.expression();
         self.parser.consume(TokenType::RightParen, String::from("Expect ')' after expression"), self.scanner.clone());
     }
 
-    pub fn unary(&mut self, _can_assign: bool) {
+    fn unary(&mut self, _can_assign: bool) {
         let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone();
 
         self.parse_precedence(Precedence::Unary);
@@ -374,7 +430,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn binary(&mut self, _can_assign: bool) {
+    fn binary(&mut self, _can_assign: bool) {
         let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
         let token_index: usize = operator_type.clone().into();
         let rule = self.rules.get(token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", operator_type.clone()) });
@@ -396,17 +452,43 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    pub fn variable(&mut self, can_assign: bool) {
+    fn variable(&mut self, can_assign: bool) {
         self.named_variable(self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).clone(), can_assign);
     }
 
-    pub fn named_variable(&mut self, identifier: Token, can_assign: bool) {
-        let arg = self.identifier_constant(identifier);
+    fn named_variable(&mut self, identifier: Token, can_assign: bool) {
+        let get_op: OpCode;
+        let set_op: OpCode;
+        let arg = self.resolve_local(&identifier);
+
+        if arg != -1 {
+            get_op = OpCode::OpGetLocal(arg as usize);
+            set_op = OpCode::OpSetLocal(arg as usize);
+        } else {
+            let arg = self.identifier_constant(identifier);
+            get_op = OpCode::OpGetGlobal(arg);
+            set_op = OpCode::OpSetGlobal(arg);
+        }
+
         if can_assign && self.match_token(TokenType::Equal) {
             self.expression();
-            self.emit_byte(OpCode::OpSetGlobal(arg));
+            self.emit_byte(set_op);
         } else {
-            self.emit_byte(OpCode::OpGetGlobal(arg));
+            self.emit_byte(get_op);
         }
+    }
+
+    fn resolve_local(&mut self, identifier: &Token) -> isize {
+        for i in (0..self.locals.len()).rev() {
+            let local = &self.locals[i];
+            if self.identifiers_equal(&local.token, &identifier) {
+                if local.depth == -1 {
+                    self.parser.error(String::from("Can't read local variable in its own initializer"), self.source);
+                }
+                return i as isize;
+            }
+        }
+
+        return -1;
     }
 }

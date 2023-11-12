@@ -11,6 +11,8 @@ pub enum OpCode {
     OpDefineGlobal(usize),
     OpGetGlobal(usize),
     OpSetGlobal(usize),
+    OpGetLocal(usize),
+    OpSetLocal(usize),
     OpNegate,
     OpAdd,
     OpSubtract,

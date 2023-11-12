@@ -8,14 +8,28 @@ fn main() {
     // print 4/3;
     // print \" \";
     // let a = 3+2;";
-    let source = "let game = \"chrono\";
-    game = game + \" trigger\";
-    print game;";
+    let source = "let prom = \"chrono\";
+    prom = prom + \" trigger\";
+    print prom;
+    {
+        let a = 3;
+        a = 4;
+        print a;
+        let b = 5;
+        {
+            let c = 25 + 4;
+            print c;
+        }
+        print b;
+        b = a;
+        print b;
+    }
+    ";
     // let source = "print 3+(2*(4/3));";
     println!();
-    println!("Source code: {}", source);
+    println!("Source code:\n\t{}", source);
     println!();
 
-    let mut vm = VM::new(DebugLevel::Verbose);
+    let mut vm = VM::new(DebugLevel::None);
     vm.interpret(source.to_string());
 }

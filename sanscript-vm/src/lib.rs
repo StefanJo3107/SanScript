@@ -164,6 +164,13 @@ impl VM {
                         }
                     }
                 }
+                OpCode::OpGetLocal(local_addr) => {
+                    let stack_val = self.stack.get(*local_addr).unwrap_or_else(||{panic!("Stack is empty, cannot get local variable")});
+                    self.stack.push(stack_val.clone());
+                }
+                OpCode::OpSetLocal(local_addr) => {
+                    self.stack[*local_addr] = self.stack.last().unwrap_or_else(||{panic!("Stack is empty, cannot set local variable")}).clone();
+                }
                 OpCode::OpNegate => {
                     if let Some(Value::ValNumber(number)) = self.stack.last() {
                         self.stack.push(Value::ValNumber(-*number));

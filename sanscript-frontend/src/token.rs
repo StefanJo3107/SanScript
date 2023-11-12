@@ -69,7 +69,7 @@ impl Into<usize> for TokenType {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Token {
     pub token_type: TokenType,
     pub start_index: usize,
