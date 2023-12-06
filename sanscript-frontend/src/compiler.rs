@@ -197,8 +197,8 @@ impl<'a> Compiler<'a> {
         return self.identifier_constant(identifier.clone());
     }
 
-    fn mark_initialized(&mut self){
-        let local = self.locals.last_mut().unwrap_or_else(||{panic!("Locals array is empty!")});
+    fn mark_initialized(&mut self) {
+        let local = self.locals.last_mut().unwrap_or_else(|| { panic!("Locals array is empty!") });
         local.depth = self.scope_depth;
     }
 
@@ -263,8 +263,38 @@ impl<'a> Compiler<'a> {
             self.begin_scope();
             self.block();
             self.end_scope();
+        } else if self.match_token(TokenType::If)
+        {
+            self.if_statement();
         } else {
             self.expression_statement();
+        }
+    }
+
+    fn if_statement(&mut self) {
+        self.parser.consume(TokenType::LeftParen, String::from("Expect '(' after 'if'"), self.scanner.clone());
+        self.expression();
+        self.parser.consume(TokenType::RightParen, String::from("Expect ')' after condition"), self.scanner.clone());
+
+        let jump_instruction = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
+        self.statement();
+        self.patch_jump(jump_instruction);
+    }
+
+    fn emit_jump(&mut self, instruction: OpCode) -> usize {
+        self.emit_byte(instruction);
+        self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - 1
+    }
+
+    fn patch_jump(&mut self, address: usize) {
+        let jump = self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - address - 1;
+        let new_code = match self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).get_code(address) {
+            OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
+            _ => None
+        };
+
+        if let Some(code) = new_code {
+            self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") }).set_code(code, address);
         }
     }
 
@@ -276,7 +306,7 @@ impl<'a> Compiler<'a> {
         self.scope_depth -= 1;
 
         for i in (0..self.locals.len()).rev() {
-            if self.locals.get(i).unwrap_or_else(||{panic!("No local variable with given index")}).depth >=self.scope_depth + 1 {
+            if self.locals.get(i).unwrap_or_else(|| { panic!("No local variable with given index") }).depth >= self.scope_depth + 1 {
                 self.locals.remove(i);
                 self.emit_byte(OpCode::OpPop);
             }

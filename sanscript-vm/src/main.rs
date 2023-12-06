@@ -11,6 +11,9 @@ fn main() {
     let source = "let prom = \"chrono\";
     prom = prom + \" trigger\";
     print prom;
+    if (prom == \"chrono trigger\"){
+        print \"Hello\";
+    }
     {
         let a = 3;
         a = 4;
@@ -30,6 +33,6 @@ fn main() {
     println!("Source code:\n\t{}", source);
     println!();
 
-    let mut vm = VM::new(DebugLevel::None);
+    let mut vm = VM::new(DebugLevel::Verbose);
     vm.interpret(source.to_string());
 }

@@ -165,11 +165,11 @@ impl VM {
                     }
                 }
                 OpCode::OpGetLocal(local_addr) => {
-                    let stack_val = self.stack.get(*local_addr).unwrap_or_else(||{panic!("Stack is empty, cannot get local variable")});
+                    let stack_val = self.stack.get(*local_addr).unwrap_or_else(|| { panic!("Stack is empty, cannot get local variable") });
                     self.stack.push(stack_val.clone());
                 }
                 OpCode::OpSetLocal(local_addr) => {
-                    self.stack[*local_addr] = self.stack.last().unwrap_or_else(||{panic!("Stack is empty, cannot set local variable")}).clone();
+                    self.stack[*local_addr] = self.stack.last().unwrap_or_else(|| { panic!("Stack is empty, cannot set local variable") }).clone();
                 }
                 OpCode::OpNegate => {
                     if let Some(Value::ValNumber(number)) = self.stack.last() {
@@ -210,7 +210,7 @@ impl VM {
                 }
                 OpCode::OpNot => {
                     let value = self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty."); });
-                    self.stack.push(Value::ValBool(self.negate(value)));
+                    self.stack.push(Value::ValBool(self.is_falsey(value)));
                 }
                 OpCode::OpEqual => {
                     let b = self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty."); });
@@ -223,13 +223,18 @@ impl VM {
                 OpCode::OpLess => {
                     binary_op!(Value::ValBool, <);
                 }
+                OpCode::OpJumpIfFalse(offset) => {
+                    if self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
+                        self.ip += offset;
+                    }
+                }
             };
 
             self.ip += 1;
         }
     }
 
-    pub fn negate(&self, value: Value) -> bool {
+    pub fn is_falsey(&self, value: Value) -> bool {
         return match value {
             Value::ValBool(boolean) => !boolean,
             Value::ValNumber(number) => number == 0.0,

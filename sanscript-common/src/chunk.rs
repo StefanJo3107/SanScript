@@ -27,6 +27,7 @@ pub enum OpCode {
     OpLess,
     OpPrint,
     OpPop,
+    OpJumpIfFalse(usize)
 }
 
 pub struct Chunk {
@@ -46,6 +47,10 @@ impl Chunk {
 
     pub fn get_code(&self, index: usize) -> &OpCode {
         &self.code[index]
+    }
+
+    pub fn set_code(&mut self, byte: OpCode, index: usize) {
+        self.code[index] = byte;
     }
 
     pub fn write_chunk(&mut self, byte: OpCode, line: usize) {

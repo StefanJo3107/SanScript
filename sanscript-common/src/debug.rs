@@ -37,7 +37,8 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
         | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess | OpCode::OpPrint | OpCode::OpPop => simple_instruction(instruction, print_offset),
         OpCode::OpConstant(value) | OpCode::OpDefineGlobal(value) | OpCode::OpGetGlobal(value)
         | OpCode::OpSetGlobal(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
-        OpCode::OpGetLocal(value) | OpCode::OpSetLocal(value) => byte_instruction(instruction, value, offset)
+        OpCode::OpGetLocal(value) | OpCode::OpSetLocal(value) => byte_instruction(instruction, value, offset),
+        OpCode::OpJumpIfFalse(value) => jump_instruction(instruction, value, offset)
     }
 }
 
@@ -64,5 +65,10 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
 
 fn byte_instruction(opcode: &OpCode, value: &usize, offset: usize) -> usize {
     println!(" {:<16} {:>4}", opcode, value);
+    offset + size_of::<usize>()
+}
+
+fn jump_instruction(opcode: &OpCode, value: &usize, offset: usize) -> usize {
+    println!(" {:<16} {:>4} -> {}", opcode, offset, offset + value);
     offset + size_of::<usize>()
 }
