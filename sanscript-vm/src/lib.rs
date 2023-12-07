@@ -227,6 +227,7 @@ impl VM {
                     if self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
                         self.ip += offset;
                     }
+                    self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty.") });
                 }
             };
 

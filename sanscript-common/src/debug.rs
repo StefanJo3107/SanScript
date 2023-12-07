@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::mem::{size_of, size_of_val};
 use std::process::exit;
 use crate::chunk::Chunk;
 use crate::chunk::OpCode;
@@ -31,15 +31,64 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
     }
 
     let instruction = chunk.get_code(offset);
-    match instruction {
+    if matches_simple_instruction(instruction) {
+        return simple_instruction(instruction, print_offset);
+    } else if matches_constant_instruction(instruction).0 {
+        return constant_instruction(instruction, chunk.get_constant(matches_constant_instruction(instruction).1), print_offset);
+    } else if matches_byte_instruction(instruction).0 {
+        return byte_instruction(instruction, matches_byte_instruction(instruction).1, print_offset);
+    } else if matches_jump_instruction(instruction).0
+    {
+        let jump_off = get_instruction_address(chunk, offset, print_offset, matches_jump_instruction(instruction).1);
+        return jump_instruction(instruction, jump_off, print_offset);
+    }
+
+    panic!("Unknown opcode, terminating...");
+}
+
+fn matches_simple_instruction(opcode: &OpCode) -> bool {
+    match opcode {
         OpCode::OpReturn | OpCode::OpNegate | OpCode::OpAdd | OpCode::OpSubtract | OpCode::OpMultiply
         | OpCode::OpDivide | OpCode::OpTrue | OpCode::OpFalse | OpCode::OpNil | OpCode::OpNot
-        | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess | OpCode::OpPrint | OpCode::OpPop => simple_instruction(instruction, print_offset),
-        OpCode::OpConstant(value) | OpCode::OpDefineGlobal(value) | OpCode::OpGetGlobal(value)
-        | OpCode::OpSetGlobal(value) => constant_instruction(instruction, chunk.get_constant(value.to_owned()), print_offset),
-        OpCode::OpGetLocal(value) | OpCode::OpSetLocal(value) => byte_instruction(instruction, value, offset),
-        OpCode::OpJumpIfFalse(value) => jump_instruction(instruction, value, offset)
+        | OpCode::OpEqual | OpCode::OpGreater | OpCode::OpLess | OpCode::OpPrint | OpCode::OpPop => true,
+        _ => false
     }
+}
+
+fn matches_constant_instruction(opcode: &OpCode) -> (bool, usize) {
+    match opcode {
+        OpCode::OpConstant(value) | OpCode::OpDefineGlobal(value) | OpCode::OpGetGlobal(value)
+        | OpCode::OpSetGlobal(value) => (true, *value),
+        _ => (false, 0)
+    }
+}
+
+fn matches_byte_instruction(opcode: &OpCode) -> (bool, usize) {
+    match opcode
+    {
+        OpCode::OpGetLocal(value) | OpCode::OpSetLocal(value) => (true, *value),
+        _ => (false, 0)
+    }
+}
+
+fn matches_jump_instruction(opcode: &OpCode) -> (bool, usize) {
+    match opcode
+    {
+        OpCode::OpJumpIfFalse(value) => (true, *value),
+        _ => (false, 0)
+    }
+}
+
+fn get_instruction_address(chunk: &Chunk, offset: usize, print_offset: usize, jump_offset: usize) -> usize {
+    let mut curr_offset = offset;
+    let mut curr_print_offset = print_offset;
+    while curr_offset <= offset + jump_offset {
+        let instruction = chunk.get_code(curr_offset);
+        curr_print_offset += if matches_simple_instruction(instruction) { 1 } else { 8 };
+        curr_offset += 1;
+    }
+
+    curr_print_offset
 }
 
 fn simple_instruction(opcode: &OpCode, offset: usize) -> usize {
@@ -63,12 +112,12 @@ fn constant_instruction(opcode: &OpCode, value: &Value, offset: usize) -> usize 
     }
 }
 
-fn byte_instruction(opcode: &OpCode, value: &usize, offset: usize) -> usize {
+fn byte_instruction(opcode: &OpCode, value: usize, offset: usize) -> usize {
     println!(" {:<16} {:>4}", opcode, value);
     offset + size_of::<usize>()
 }
 
-fn jump_instruction(opcode: &OpCode, value: &usize, offset: usize) -> usize {
-    println!(" {:<16} {:>4} -> {}", opcode, offset, offset + value);
+fn jump_instruction(opcode: &OpCode, jump_address: usize, offset: usize) -> usize {
+    println!(" {:<16}  {:>4} -> {}", opcode, offset, jump_address);
     offset + size_of::<usize>()
 }

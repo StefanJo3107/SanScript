@@ -13,6 +13,7 @@ fn main() {
     print prom;
     if (prom == \"chrono trigger\"){
         print \"Hello\";
+        print \"World\";
     }
     {
         let a = 3;
