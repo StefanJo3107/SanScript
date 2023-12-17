@@ -245,6 +245,11 @@ impl VM {
                         self.ip += offset;
                     }
                 }
+                OpCode::OpJumpIfTrue(offset) => {
+                    if !self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
+                        self.ip += offset;
+                    }
+                }
                 OpCode::OpJump(offset) => {
                     self.ip += offset;
                 }

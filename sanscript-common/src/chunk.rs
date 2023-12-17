@@ -28,6 +28,7 @@ pub enum OpCode {
     OpPrint,
     OpPop,
     OpJumpIfFalse(usize),
+    OpJumpIfTrue(usize),
     OpJump(usize)
 }
 

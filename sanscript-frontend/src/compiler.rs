@@ -129,7 +129,7 @@ impl<'a> Compiler<'a> {
         add_table_entry!(TokenType::Identifier, Some(Compiler::variable), None, Precedence::None);
         add_table_entry!(TokenType::String, Some(Compiler::string), None, Precedence::None);
         add_table_entry!(TokenType::Number, Some(Compiler::number), None, Precedence::None);
-        add_table_entry!(TokenType::And, None, None, Precedence::None);
+        add_table_entry!(TokenType::And, None, Some(Compiler::and), Precedence::And);
         add_table_entry!(TokenType::Else, None, None, Precedence::None);
         add_table_entry!(TokenType::False, Some(Compiler::literal), None, Precedence::None);
         add_table_entry!(TokenType::For, None, None, Precedence::None);
@@ -139,7 +139,7 @@ impl<'a> Compiler<'a> {
         add_table_entry!(TokenType::Match, None, None, Precedence::None);
         add_table_entry!(TokenType::Loop, None, None, Precedence::None);
         add_table_entry!(TokenType::Nil, Some(Compiler::literal), None, Precedence::None);
-        add_table_entry!(TokenType::Or, None, None, Precedence::None);
+        add_table_entry!(TokenType::Or, None, Some(Compiler::or), Precedence::Or);
         add_table_entry!(TokenType::Print, None, None, Precedence::None);
         add_table_entry!(TokenType::Return, None, None, Precedence::None);
         add_table_entry!(TokenType::True, Some(Compiler::literal), None, Precedence::None);
@@ -300,6 +300,7 @@ impl<'a> Compiler<'a> {
         println!("{}",jump);
         let new_code = match self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).get_code(address) {
             OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
+            OpCode::OpJumpIfTrue(value) => Some(OpCode::OpJumpIfTrue(jump)),
             OpCode::OpJump(value) => Some(OpCode::OpJump(jump)),
             _ => None
         };
@@ -491,6 +492,24 @@ impl<'a> Compiler<'a> {
             TokenType::LessEqual => self.emit_bytes(&[OpCode::OpGreater, OpCode::OpNot]),
             _ => return
         }
+    }
+
+    fn and(&mut self, _can_assign: bool){
+        let end_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
+
+        self.emit_byte(OpCode::OpPop);
+        self.parse_precedence(Precedence::And);
+
+        self.patch_jump(end_jump);
+    }
+
+    fn or(&mut self, _can_assign: bool){
+        let end_jump = self.emit_jump(OpCode::OpJumpIfTrue(0xff));
+
+        self.emit_byte(OpCode::OpPop);
+        self.parse_precedence(Precedence::Or);
+
+        self.patch_jump(end_jump);
     }
 
     fn variable(&mut self, can_assign: bool) {

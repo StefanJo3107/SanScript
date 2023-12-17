@@ -14,7 +14,7 @@ fn main() {
     if (prom == \"chroono trigger\"){
         print \"Hello\";
         print \"World\";
-    } else if (prom == \"chrono trigger\"){
+    } else if (prom == \"chrono trigger\" and 3<2){
         print \"Za warudo\";
     } else {
         print \"Please stand up\";
@@ -39,6 +39,6 @@ fn main() {
     println!("Source code:\n\t{}", source);
     println!();
 
-    let mut vm = VM::new(DebugLevel::BytecodeOnly);
+    let mut vm = VM::new(DebugLevel::None);
     vm.interpret(source.to_string());
 }

@@ -74,7 +74,7 @@ fn matches_byte_instruction(opcode: &OpCode) -> (bool, usize) {
 fn matches_jump_instruction(opcode: &OpCode) -> (bool, usize) {
     match opcode
     {
-        OpCode::OpJumpIfFalse(value) | OpCode::OpJump(value) => (true, *value),
+        OpCode::OpJumpIfFalse(value) | OpCode::OpJumpIfTrue(value) | OpCode::OpJump(value) => (true, *value),
         _ => (false, 0)
     }
 }
