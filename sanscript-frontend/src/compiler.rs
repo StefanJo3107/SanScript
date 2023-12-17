@@ -174,7 +174,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn variable_declaration(&mut self) {
-        let global = self.parse_variable("Expect variable name");
+        let var_name = self.parse_variable("Expect variable name");
 
         if self.match_token(TokenType::Equal) {
             self.expression();
@@ -183,7 +183,7 @@ impl<'a> Compiler<'a> {
         }
 
         self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
-        self.define_variable(global);
+        self.define_variable(var_name);
     }
 
     fn parse_variable(&mut self, error_msg: &str) -> usize {
@@ -195,31 +195,6 @@ impl<'a> Compiler<'a> {
 
         let identifier = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") });
         return self.identifier_constant(identifier.clone());
-    }
-
-    fn mark_initialized(&mut self) {
-        let local = self.locals.last_mut().unwrap_or_else(|| { panic!("Locals array is empty!") });
-        local.depth = self.scope_depth;
-    }
-
-    fn identifier_constant(&mut self, identifier: Token) -> usize {
-        let token_string = identifier.get_token_string(self.source);
-        let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
-        let ident_value = Value::ValString(token_string);
-        let offset = chunk.has_constant(&ident_value);
-        if offset == -1 {
-            return chunk.add_constant(ident_value);
-        }
-        return offset as usize;
-    }
-
-    fn define_variable(&mut self, global: usize) {
-        if self.scope_depth > 0 {
-            self.mark_initialized();
-            return;
-        }
-
-        self.emit_byte(OpCode::OpDefineGlobal(global));
     }
 
     fn declare_variable(&mut self) {
@@ -242,6 +217,27 @@ impl<'a> Compiler<'a> {
         self.add_local(variable);
     }
 
+    fn define_variable(&mut self, global: usize) {
+        if self.scope_depth > 0 {
+            self.mark_initialized();
+            return;
+        }
+
+        self.emit_byte(OpCode::OpDefineGlobal(global));
+    }
+
+    fn identifier_constant(&mut self, identifier: Token) -> usize {
+        let token_string = identifier.get_token_string(self.source);
+        let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
+        let ident_value = Value::ValString(token_string);
+        let offset = chunk.has_constant(&ident_value);
+        if offset == -1 {
+            return chunk.add_constant(ident_value);
+        }
+        return offset as usize;
+    }
+
+
     fn identifiers_equal(&self, a: &Token, b: &Token) -> bool {
         return a.get_token_string(self.source) == b.get_token_string(self.source);
     }
@@ -253,6 +249,11 @@ impl<'a> Compiler<'a> {
         };
 
         self.locals.push(local);
+    }
+
+    fn mark_initialized(&mut self) {
+        let local = self.locals.last_mut().unwrap_or_else(|| { panic!("Locals array is empty!") });
+        local.depth = self.scope_depth;
     }
 
     fn statement(&mut self) {
@@ -276,9 +277,17 @@ impl<'a> Compiler<'a> {
         self.expression();
         self.parser.consume(TokenType::RightParen, String::from("Expect ')' after condition"), self.scanner.clone());
 
-        let jump_instruction = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
+        let then_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
+        self.emit_byte(OpCode::OpPop);
         self.statement();
-        self.patch_jump(jump_instruction);
+        let else_jump  = self.emit_jump(OpCode::OpJump(0xff));
+        self.patch_jump(then_jump);
+        self.emit_byte(OpCode::OpPop);
+
+        if self.match_token(TokenType::Else){
+            self.statement();
+        }
+        self.patch_jump(else_jump);
     }
 
     fn emit_jump(&mut self, instruction: OpCode) -> usize {
@@ -288,8 +297,10 @@ impl<'a> Compiler<'a> {
 
     fn patch_jump(&mut self, address: usize) {
         let jump = self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - address - 1;
+        println!("{}",jump);
         let new_code = match self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).get_code(address) {
             OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
+            OpCode::OpJump(value) => Some(OpCode::OpJump(jump)),
             _ => None
         };
 

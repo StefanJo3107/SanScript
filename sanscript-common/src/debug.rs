@@ -74,7 +74,7 @@ fn matches_byte_instruction(opcode: &OpCode) -> (bool, usize) {
 fn matches_jump_instruction(opcode: &OpCode) -> (bool, usize) {
     match opcode
     {
-        OpCode::OpJumpIfFalse(value) => (true, *value),
+        OpCode::OpJumpIfFalse(value) | OpCode::OpJump(value) => (true, *value),
         _ => (false, 0)
     }
 }
@@ -82,7 +82,7 @@ fn matches_jump_instruction(opcode: &OpCode) -> (bool, usize) {
 fn get_instruction_address(chunk: &Chunk, offset: usize, print_offset: usize, jump_offset: usize) -> usize {
     let mut curr_offset = offset;
     let mut curr_print_offset = print_offset;
-    while curr_offset <= offset + jump_offset {
+    while curr_offset < offset + jump_offset {
         let instruction = chunk.get_code(curr_offset);
         curr_print_offset += if matches_simple_instruction(instruction) { 1 } else { 8 };
         curr_offset += 1;

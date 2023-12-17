@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use sanscript_common::chunk::{Chunk, OpCode};
-use sanscript_common::debug::disassemble_instruction;
+use sanscript_common::debug::{disassemble_chunk, disassemble_instruction};
 use sanscript_common::value::{Value, ValueArray};
 use sanscript_frontend::compiler::Compiler;
 use sanscript_frontend::scanner::Scanner;
@@ -103,21 +103,38 @@ impl VM {
         }
 
         let mut print_offset = 0;
+        let mut print_ip = self.ip;
 
         loop {
             let instruction: &OpCode = self.chunk.get_code(self.ip);
 
             if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
-                print!("{:0>6} |", print_offset);
-                print_offset = disassemble_instruction(&self.chunk, self.ip, print_offset);
+                for ip in print_ip..self.ip + 1 {
+                    if self.ip - ip > 1 {
+                        print!("\x1b[31m{:0>6} |", print_offset);
+                    } else {
+                        print!("\x1b[0m{:0>6} |", print_offset);
+                    }
+                    print_offset = disassemble_instruction(&self.chunk, ip, print_offset);
 
-                //printing stack
-                for value in self.stack.iter() {
-                    print!("[ ");
-                    ValueArray::print_value(value);
-                    print!(" ]");
+                    //printing stack
+                    for value in self.stack.iter() {
+                        if self.ip - ip > 1 {
+                            print!("\x1b[31m[ ");
+                            ValueArray::print_value(value);
+                            print!("\x1b[31m ]");
+                        } else {
+                            print!("\x1b[0m[ ");
+                            ValueArray::print_value(value);
+                            print!("\x1b[0m ]");
+                        }
+                    }
+
+                    if self.stack.len() > 0 {
+                        println!("\x1b[0m");
+                    }
                 }
-                println!();
+                print_ip = self.ip + 1;
             }
 
             match instruction
@@ -227,7 +244,9 @@ impl VM {
                     if self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
                         self.ip += offset;
                     }
-                    self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty.") });
+                }
+                OpCode::OpJump(offset) => {
+                    self.ip += offset;
                 }
             };
 

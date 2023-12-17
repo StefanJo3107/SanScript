@@ -11,10 +11,15 @@ fn main() {
     let source = "let prom = \"chrono\";
     prom = prom + \" trigger\";
     print prom;
-    if (prom == \"chrono trigger\"){
+    if (prom == \"chroono trigger\"){
         print \"Hello\";
         print \"World\";
+    } else if (prom == \"chrono trigger\"){
+        print \"Za warudo\";
+    } else {
+        print \"Please stand up\";
     }
+
     {
         let a = 3;
         a = 4;
@@ -34,6 +39,6 @@ fn main() {
     println!("Source code:\n\t{}", source);
     println!();
 
-    let mut vm = VM::new(DebugLevel::Verbose);
+    let mut vm = VM::new(DebugLevel::BytecodeOnly);
     vm.interpret(source.to_string());
 }
