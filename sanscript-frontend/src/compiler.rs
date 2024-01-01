@@ -259,14 +259,14 @@ impl<'a> Compiler<'a> {
     fn statement(&mut self) {
         if self.match_token(TokenType::Print) {
             self.print_statement();
-        } else if self.match_token(TokenType::LeftBrace)
-        {
+        } else if self.match_token(TokenType::LeftBrace) {
             self.begin_scope();
             self.block();
             self.end_scope();
-        } else if self.match_token(TokenType::If)
-        {
+        } else if self.match_token(TokenType::If) {
             self.if_statement();
+        } else if self.match_token(TokenType::While) {
+            self.while_statement();
         } else {
             self.expression_statement();
         }
@@ -280,14 +280,28 @@ impl<'a> Compiler<'a> {
         let then_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
         self.emit_byte(OpCode::OpPop);
         self.statement();
-        let else_jump  = self.emit_jump(OpCode::OpJump(0xff));
+        let else_jump = self.emit_jump(OpCode::OpJump(0xff));
         self.patch_jump(then_jump);
         self.emit_byte(OpCode::OpPop);
 
-        if self.match_token(TokenType::Else){
+        if self.match_token(TokenType::Else) {
             self.statement();
         }
         self.patch_jump(else_jump);
+    }
+
+    fn while_statement(&mut self) {
+        let loop_start = self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len();
+        self.parser.consume(TokenType::LeftParen, String::from("Expect '(' after 'while'"), self.scanner.clone());
+        self.expression();
+        self.parser.consume(TokenType::RightParen, String::from("Expect ')' after condition"), self.scanner.clone());
+
+        let exit_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
+        self.emit_byte(OpCode::OpPop);
+        self.statement();
+        self.emit_loop(loop_start);
+        self.patch_jump(exit_jump);
+        self.emit_byte(OpCode::OpPop);
     }
 
     fn emit_jump(&mut self, instruction: OpCode) -> usize {
@@ -297,7 +311,6 @@ impl<'a> Compiler<'a> {
 
     fn patch_jump(&mut self, address: usize) {
         let jump = self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - address - 1;
-        println!("{}",jump);
         let new_code = match self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).get_code(address) {
             OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
             OpCode::OpJumpIfTrue(value) => Some(OpCode::OpJumpIfTrue(jump)),
@@ -308,6 +321,10 @@ impl<'a> Compiler<'a> {
         if let Some(code) = new_code {
             self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") }).set_code(code, address);
         }
+    }
+
+    fn emit_loop(&mut self, loop_start: usize) {
+        self.emit_byte(OpCode::OpLoop(self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - loop_start + 1));
     }
 
     fn begin_scope(&mut self) {
@@ -494,7 +511,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn and(&mut self, _can_assign: bool){
+    fn and(&mut self, _can_assign: bool) {
         let end_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
 
         self.emit_byte(OpCode::OpPop);
@@ -503,7 +520,7 @@ impl<'a> Compiler<'a> {
         self.patch_jump(end_jump);
     }
 
-    fn or(&mut self, _can_assign: bool){
+    fn or(&mut self, _can_assign: bool) {
         let end_jump = self.emit_jump(OpCode::OpJumpIfTrue(0xff));
 
         self.emit_byte(OpCode::OpPop);

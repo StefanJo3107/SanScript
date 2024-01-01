@@ -102,7 +102,8 @@ impl VM {
             println!("\x1B[4mOFFSET |  LINE  | {: <30}\x1B[0m", "OPCODE");
         }
 
-        let mut print_offset = 0;
+        let mut print_offsets: Vec<usize> = vec![];
+        print_offsets.push(0);
         let mut print_ip = self.ip;
 
         loop {
@@ -110,16 +111,16 @@ impl VM {
 
             if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
                 for ip in print_ip..self.ip + 1 {
-                    if self.ip - ip > 1 {
-                        print!("\x1b[31m{:0>6} |", print_offset);
+                    if self.ip - ip >= 1 {
+                        print!("\x1b[31m{:0>6} |", print_offsets.last().unwrap());
                     } else {
-                        print!("\x1b[0m{:0>6} |", print_offset);
+                        print!("\x1b[0m{:0>6} |", print_offsets.last().unwrap());
                     }
-                    print_offset = disassemble_instruction(&self.chunk, ip, print_offset);
-
+                    let off = disassemble_instruction(&self.chunk, ip, &mut print_offsets);
+                    print_offsets.push(off);
                     //printing stack
                     for value in self.stack.iter() {
-                        if self.ip - ip > 1 {
+                        if self.ip - ip >= 1 {
                             print!("\x1b[31m[ ");
                             ValueArray::print_value(value);
                             print!("\x1b[31m ]");
@@ -134,7 +135,9 @@ impl VM {
                         println!("\x1b[0m");
                     }
                 }
-                print_ip = self.ip + 1;
+                if print_ip <= self.ip {
+                    print_ip = self.ip + 1;
+                }
             }
 
             match instruction
@@ -252,6 +255,9 @@ impl VM {
                 }
                 OpCode::OpJump(offset) => {
                     self.ip += offset;
+                }
+                OpCode::OpLoop(offset) => {
+                    self.ip -= offset;
                 }
             };
 

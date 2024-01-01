@@ -29,7 +29,8 @@ pub enum OpCode {
     OpPop,
     OpJumpIfFalse(usize),
     OpJumpIfTrue(usize),
-    OpJump(usize)
+    OpJump(usize),
+    OpLoop(usize)
 }
 
 pub struct Chunk {

@@ -11,18 +11,20 @@ pub fn disassemble_chunk(chunk: &Chunk, name: &str) {
     //offset of a chunk code array
     let mut offset = 0;
     //offset that represents actual size of each instruction (used for printing only)
-    let mut print_offset = 0;
+
+    let mut print_offsets:Vec<usize> = vec![];
+    print_offsets.push(0);
 
     while offset < chunk.len() {
         //printing offset of an opcode
-        print!("{:0>6} |", print_offset);
+        print!("{:0>6} |", print_offsets.last().unwrap());
 
-        print_offset = disassemble_instruction(chunk, offset, print_offset);
+        disassemble_instruction(chunk, offset, &mut print_offsets);
         offset += 1;
     }
 }
 
-pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize) -> usize {
+pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offsets: &mut Vec<usize>) -> usize {
     //printing line number in a source code
     if offset > 0 && chunk.get_line(offset) == chunk.get_line(offset - 1) {
         print!("  -||-  |");
@@ -32,15 +34,20 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize, print_offset: usize
 
     let instruction = chunk.get_code(offset);
     if matches_simple_instruction(instruction) {
-        return simple_instruction(instruction, print_offset);
+        return simple_instruction(instruction, *print_offsets.last().unwrap());
     } else if matches_constant_instruction(instruction).0 {
-        return constant_instruction(instruction, chunk.get_constant(matches_constant_instruction(instruction).1), print_offset);
+        return constant_instruction(instruction, chunk.get_constant(matches_constant_instruction(instruction).1), *print_offsets.last().unwrap());
     } else if matches_byte_instruction(instruction).0 {
-        return byte_instruction(instruction, matches_byte_instruction(instruction).1, print_offset);
+        return byte_instruction(instruction, matches_byte_instruction(instruction).1, *print_offsets.last().unwrap());
     } else if matches_jump_instruction(instruction).0
     {
-        let jump_off = get_instruction_address(chunk, offset, print_offset, matches_jump_instruction(instruction).1);
-        return jump_instruction(instruction, jump_off, print_offset);
+        let jump_off = get_instruction_address(chunk, offset, *print_offsets.last().unwrap(), matches_jump_instruction(instruction).1);
+        return jump_instruction(instruction, jump_off, *print_offsets.last().unwrap());
+    } else if matches_loop_instruction(instruction).0
+    {
+        let last_index = print_offsets.len() - 1;
+        let loop_off = print_offsets[last_index - matches_loop_instruction(instruction).1];
+        return jump_instruction(instruction, loop_off, *print_offsets.last().unwrap());
     }
 
     panic!("Unknown opcode, terminating...");
@@ -75,6 +82,14 @@ fn matches_jump_instruction(opcode: &OpCode) -> (bool, usize) {
     match opcode
     {
         OpCode::OpJumpIfFalse(value) | OpCode::OpJumpIfTrue(value) | OpCode::OpJump(value) => (true, *value),
+        _ => (false, 0)
+    }
+}
+
+fn matches_loop_instruction(opcode: &OpCode) -> (bool, usize) {
+    match opcode
+    {
+        OpCode::OpLoop(value) => (true, *value),
         _ => (false, 0)
     }
 }

@@ -173,7 +173,7 @@ impl<'a> Scanner<'a> {
             'p' => self.check_keyword(1, 4, "rint", TokenType::Print),
             'r' => self.check_keyword(1, 5, "eturn", TokenType::Return),
             't' => self.check_keyword(1, 3, "rue", TokenType::True),
-            'w' => self.check_keyword(1, 2, "hile", TokenType::While),
+            'w' => self.check_keyword(1, 4, "hile", TokenType::While),
             'f' => {
                 if self.current_index - self.start_index > 1 {
                     let second_char = self.source.chars().nth(self.start_index + 1).unwrap_or_else(|| { panic!("Tried to index source code outside of its bounds!") });
