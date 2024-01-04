@@ -1,13 +1,14 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use num_derive::FromPrimitive;
-use sanscript_common::chunk::{Chunk, OpCode};
-use sanscript_common::chunk::OpCode::OpConstant;
-use sanscript_common::value::{Number, Value};
 use crate::parser::Parser;
 use crate::scanner::Scanner;
-use crate::ScannerRef;
 use crate::token::{Token, TokenType};
+use crate::ScannerRef;
+use num_derive::FromPrimitive;
+use sanscript_common::chunk::OpCode::OpConstant;
+use sanscript_common::chunk::{Chunk, OpCode};
+use sanscript_common::value::{Number, Value};
+use std::cell::RefCell;
+use std::isize;
+use std::rc::Rc;
 use strum::EnumCount;
 
 #[repr(usize)]
@@ -65,7 +66,14 @@ impl<'a> Compiler<'a> {
         let mut compiler = Compiler {
             parser: Parser::new(),
             compiling_chunk: None,
-            rules: vec![ParseRule { infix: None, prefix: None, precedence: Precedence::None }; TokenType::COUNT + 1],
+            rules: vec![
+                ParseRule {
+                    infix: None,
+                    prefix: None,
+                    precedence: Precedence::None
+                };
+                TokenType::COUNT + 1
+            ],
             scanner: Rc::new(RefCell::new(Scanner::new(source))),
             source,
             locals: vec![],
@@ -107,42 +115,132 @@ impl<'a> Compiler<'a> {
             };
         }
 
-        add_table_entry!(TokenType::LeftParen, Some(Compiler::grouping), None, Precedence::None);
+        add_table_entry!(
+            TokenType::LeftParen,
+            Some(Compiler::grouping),
+            None,
+            Precedence::None
+        );
         add_table_entry!(TokenType::RightParen, None, None, Precedence::None);
         add_table_entry!(TokenType::LeftBrace, None, None, Precedence::None);
         add_table_entry!(TokenType::RightBrace, None, None, Precedence::None);
         add_table_entry!(TokenType::Comma, None, None, Precedence::None);
         add_table_entry!(TokenType::Dot, None, None, Precedence::None);
-        add_table_entry!(TokenType::Minus, Some(Compiler::unary), Some(Compiler::binary), Precedence::Term);
-        add_table_entry!(TokenType::Plus, None, Some(Compiler::binary), Precedence::Term);
+        add_table_entry!(
+            TokenType::Minus,
+            Some(Compiler::unary),
+            Some(Compiler::binary),
+            Precedence::Term
+        );
+        add_table_entry!(
+            TokenType::Plus,
+            None,
+            Some(Compiler::binary),
+            Precedence::Term
+        );
         add_table_entry!(TokenType::Semicolon, None, None, Precedence::None);
-        add_table_entry!(TokenType::Slash, None, Some(Compiler::binary), Precedence::Factor);
-        add_table_entry!(TokenType::Star, None, Some(Compiler::binary), Precedence::Factor);
-        add_table_entry!(TokenType::Bang, Some(Compiler::unary), None, Precedence::None);
-        add_table_entry!(TokenType::BangEqual, None, Some(Compiler::binary), Precedence::Equality);
+        add_table_entry!(
+            TokenType::Slash,
+            None,
+            Some(Compiler::binary),
+            Precedence::Factor
+        );
+        add_table_entry!(
+            TokenType::Star,
+            None,
+            Some(Compiler::binary),
+            Precedence::Factor
+        );
+        add_table_entry!(
+            TokenType::Bang,
+            Some(Compiler::unary),
+            None,
+            Precedence::None
+        );
+        add_table_entry!(
+            TokenType::BangEqual,
+            None,
+            Some(Compiler::binary),
+            Precedence::Equality
+        );
         add_table_entry!(TokenType::Equal, None, None, Precedence::None);
-        add_table_entry!(TokenType::EqualEqual, None, Some(Compiler::binary), Precedence::Equality);
-        add_table_entry!(TokenType::Greater, None, Some(Compiler::binary), Precedence::Comparison);
-        add_table_entry!(TokenType::GreaterEqual, None, Some(Compiler::binary), Precedence::Comparison);
-        add_table_entry!(TokenType::Less, None, Some(Compiler::binary), Precedence::Comparison);
-        add_table_entry!(TokenType::LessEqual, None, Some(Compiler::binary), Precedence::Comparison);
-        add_table_entry!(TokenType::Identifier, Some(Compiler::variable), None, Precedence::None);
-        add_table_entry!(TokenType::String, Some(Compiler::string), None, Precedence::None);
-        add_table_entry!(TokenType::Number, Some(Compiler::number), None, Precedence::None);
+        add_table_entry!(
+            TokenType::EqualEqual,
+            None,
+            Some(Compiler::binary),
+            Precedence::Equality
+        );
+        add_table_entry!(
+            TokenType::Greater,
+            None,
+            Some(Compiler::binary),
+            Precedence::Comparison
+        );
+        add_table_entry!(
+            TokenType::GreaterEqual,
+            None,
+            Some(Compiler::binary),
+            Precedence::Comparison
+        );
+        add_table_entry!(
+            TokenType::Less,
+            None,
+            Some(Compiler::binary),
+            Precedence::Comparison
+        );
+        add_table_entry!(
+            TokenType::LessEqual,
+            None,
+            Some(Compiler::binary),
+            Precedence::Comparison
+        );
+        add_table_entry!(
+            TokenType::Identifier,
+            Some(Compiler::variable),
+            None,
+            Precedence::None
+        );
+        add_table_entry!(
+            TokenType::String,
+            Some(Compiler::string),
+            None,
+            Precedence::None
+        );
+        add_table_entry!(
+            TokenType::Number,
+            Some(Compiler::number),
+            None,
+            Precedence::None
+        );
         add_table_entry!(TokenType::And, None, Some(Compiler::and), Precedence::And);
         add_table_entry!(TokenType::Else, None, None, Precedence::None);
-        add_table_entry!(TokenType::False, Some(Compiler::literal), None, Precedence::None);
+        add_table_entry!(
+            TokenType::False,
+            Some(Compiler::literal),
+            None,
+            Precedence::None
+        );
         add_table_entry!(TokenType::For, None, None, Precedence::None);
         add_table_entry!(TokenType::Fn, None, None, Precedence::None);
         add_table_entry!(TokenType::If, None, None, Precedence::None);
         add_table_entry!(TokenType::Key, None, None, Precedence::None);
         add_table_entry!(TokenType::Match, None, None, Precedence::None);
         add_table_entry!(TokenType::Loop, None, None, Precedence::None);
-        add_table_entry!(TokenType::Nil, Some(Compiler::literal), None, Precedence::None);
+        add_table_entry!(
+            TokenType::Nil,
+            Some(Compiler::literal),
+            None,
+            Precedence::None
+        );
         add_table_entry!(TokenType::Or, None, Some(Compiler::or), Precedence::Or);
         add_table_entry!(TokenType::Print, None, None, Precedence::None);
         add_table_entry!(TokenType::Return, None, None, Precedence::None);
-        add_table_entry!(TokenType::True, Some(Compiler::literal), None, Precedence::None);
+        add_table_entry!(
+            TokenType::True,
+            Some(Compiler::literal),
+            None,
+            Precedence::None
+        );
         add_table_entry!(TokenType::Let, None, None, Precedence::None);
         add_table_entry!(TokenType::While, None, None, Precedence::None);
         let error_token = TokenType::Error("".to_string());
@@ -182,18 +280,30 @@ impl<'a> Compiler<'a> {
             self.emit_byte(OpCode::OpNil);
         }
 
-        self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::Semicolon,
+            String::from("Expect ';' after value"),
+            self.scanner.clone(),
+        );
         self.define_variable(var_name);
     }
 
     fn parse_variable(&mut self, error_msg: &str) -> usize {
-        self.parser.consume(TokenType::Identifier, String::from(error_msg), self.scanner.clone());
+        self.parser.consume(
+            TokenType::Identifier,
+            String::from(error_msg),
+            self.scanner.clone(),
+        );
         self.declare_variable();
         if self.scope_depth > 0 {
             return 0;
         }
 
-        let identifier = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") });
+        let identifier = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!"));
         return self.identifier_constant(identifier.clone());
     }
 
@@ -202,7 +312,12 @@ impl<'a> Compiler<'a> {
             return;
         }
 
-        let variable = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).clone();
+        let variable = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .clone();
 
         for local in &self.locals {
             if local.depth != -1 && local.depth < self.scope_depth {
@@ -210,7 +325,10 @@ impl<'a> Compiler<'a> {
             }
 
             if self.identifiers_equal(&variable, &local.token) {
-                self.parser.error(String::from("Variable redeclaration in the same scope"), self.source);
+                self.parser.error(
+                    String::from("Variable redeclaration in the same scope"),
+                    self.source,
+                );
             }
         }
 
@@ -228,7 +346,10 @@ impl<'a> Compiler<'a> {
 
     fn identifier_constant(&mut self, identifier: Token) -> usize {
         let token_string = identifier.get_token_string(self.source);
-        let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
+        let chunk = self
+            .compiling_chunk
+            .as_mut()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"));
         let ident_value = Value::ValString(token_string);
         let offset = chunk.has_constant(&ident_value);
         if offset == -1 {
@@ -237,22 +358,21 @@ impl<'a> Compiler<'a> {
         return offset as usize;
     }
 
-
     fn identifiers_equal(&self, a: &Token, b: &Token) -> bool {
         return a.get_token_string(self.source) == b.get_token_string(self.source);
     }
 
     fn add_local(&mut self, token: Token) {
-        let local: Local = Local {
-            token,
-            depth: -1,
-        };
+        let local: Local = Local { token, depth: -1 };
 
         self.locals.push(local);
     }
 
     fn mark_initialized(&mut self) {
-        let local = self.locals.last_mut().unwrap_or_else(|| { panic!("Locals array is empty!") });
+        let local = self
+            .locals
+            .last_mut()
+            .unwrap_or_else(|| panic!("Locals array is empty!"));
         local.depth = self.scope_depth;
     }
 
@@ -267,15 +387,25 @@ impl<'a> Compiler<'a> {
             self.if_statement();
         } else if self.match_token(TokenType::While) {
             self.while_statement();
+        } else if self.match_token(TokenType::For) {
+            self.for_statement();
         } else {
             self.expression_statement();
         }
     }
 
     fn if_statement(&mut self) {
-        self.parser.consume(TokenType::LeftParen, String::from("Expect '(' after 'if'"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::LeftParen,
+            String::from("Expect '(' after 'if'"),
+            self.scanner.clone(),
+        );
         self.expression();
-        self.parser.consume(TokenType::RightParen, String::from("Expect ')' after condition"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::RightParen,
+            String::from("Expect ')' after condition"),
+            self.scanner.clone(),
+        );
 
         let then_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
         self.emit_byte(OpCode::OpPop);
@@ -291,10 +421,22 @@ impl<'a> Compiler<'a> {
     }
 
     fn while_statement(&mut self) {
-        let loop_start = self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len();
-        self.parser.consume(TokenType::LeftParen, String::from("Expect '(' after 'while'"), self.scanner.clone());
+        let loop_start = self
+            .compiling_chunk
+            .as_ref()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"))
+            .len();
+        self.parser.consume(
+            TokenType::LeftParen,
+            String::from("Expect '(' after 'while'"),
+            self.scanner.clone(),
+        );
         self.expression();
-        self.parser.consume(TokenType::RightParen, String::from("Expect ')' after condition"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::RightParen,
+            String::from("Expect ')' after condition"),
+            self.scanner.clone(),
+        );
 
         let exit_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
         self.emit_byte(OpCode::OpPop);
@@ -304,27 +446,113 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpCode::OpPop);
     }
 
+    fn for_statement(&mut self) {
+        self.begin_scope();
+        self.parser.consume(
+            TokenType::LeftParen,
+            String::from("Expect '(' after 'for'"),
+            self.scanner.clone(),
+        );
+        if self.match_token(TokenType::Semicolon) {
+        } else if self.match_token(TokenType::Let) {
+            self.variable_declaration();
+        } else {
+            self.expression_statement();
+        }
+
+        let mut loop_start = self
+            .compiling_chunk
+            .as_ref()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"))
+            .len();
+        let mut exit_jump = 0;
+        if !self.match_token(TokenType::Semicolon) {
+            self.expression();
+            self.parser.consume(
+                TokenType::Semicolon,
+                String::from("Expect ';' after loop condition."),
+                self.scanner.clone(),
+            );
+            exit_jump = self.emit_jump(OpCode::OpJumpIfFalse(0xff));
+            self.emit_byte(OpCode::OpPop);
+        }
+
+        if !self.match_token(TokenType::RightParen) {
+            let body_jump = self.emit_jump(OpCode::OpJump(0xff));
+            let increment_start = self
+                .compiling_chunk
+                .as_ref()
+                .unwrap_or_else(|| panic!("Current chunk is not set!"))
+                .len();
+            self.expression();
+            self.emit_byte(OpCode::OpPop);
+            self.parser.consume(
+                TokenType::RightParen,
+                String::from("Expect ')' after for clauses."),
+                self.scanner.clone(),
+            );
+            self.emit_loop(loop_start);
+            loop_start = increment_start;
+            self.patch_jump(body_jump);
+        }
+
+        self.statement();
+        self.emit_loop(loop_start);
+
+        if exit_jump != 0 {
+            self.patch_jump(exit_jump);
+            self.emit_byte(OpCode::OpPop);
+        }
+
+        self.end_scope();
+    }
+
     fn emit_jump(&mut self, instruction: OpCode) -> usize {
         self.emit_byte(instruction);
-        self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - 1
+        self.compiling_chunk
+            .as_ref()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"))
+            .len()
+            - 1
     }
 
     fn patch_jump(&mut self, address: usize) {
-        let jump = self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - address - 1;
-        let new_code = match self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).get_code(address) {
+        let jump = self
+            .compiling_chunk
+            .as_ref()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"))
+            .len()
+            - address
+            - 1;
+        let new_code = match self
+            .compiling_chunk
+            .as_ref()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"))
+            .get_code(address)
+        {
             OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
             OpCode::OpJumpIfTrue(value) => Some(OpCode::OpJumpIfTrue(jump)),
             OpCode::OpJump(value) => Some(OpCode::OpJump(jump)),
-            _ => None
+            _ => None,
         };
 
         if let Some(code) = new_code {
-            self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") }).set_code(code, address);
+            self.compiling_chunk
+                .as_mut()
+                .unwrap_or_else(|| panic!("Current chunk is not set!"))
+                .set_code(code, address);
         }
     }
 
     fn emit_loop(&mut self, loop_start: usize) {
-        self.emit_byte(OpCode::OpLoop(self.compiling_chunk.as_ref().unwrap_or_else(|| { panic!("Current chunk is not set!") }).len() - loop_start + 1));
+        self.emit_byte(OpCode::OpLoop(
+            self.compiling_chunk
+                .as_ref()
+                .unwrap_or_else(|| panic!("Current chunk is not set!"))
+                .len()
+                - loop_start
+                + 1,
+        ));
     }
 
     fn begin_scope(&mut self) {
@@ -335,7 +563,13 @@ impl<'a> Compiler<'a> {
         self.scope_depth -= 1;
 
         for i in (0..self.locals.len()).rev() {
-            if self.locals.get(i).unwrap_or_else(|| { panic!("No local variable with given index") }).depth >= self.scope_depth + 1 {
+            if self
+                .locals
+                .get(i)
+                .unwrap_or_else(|| panic!("No local variable with given index"))
+                .depth
+                >= self.scope_depth + 1
+            {
                 self.locals.remove(i);
                 self.emit_byte(OpCode::OpPop);
             }
@@ -347,7 +581,11 @@ impl<'a> Compiler<'a> {
             self.declaration();
         }
 
-        self.parser.consume(TokenType::RightBrace, String::from("Expect '}' after block."), self.scanner.clone());
+        self.parser.consume(
+            TokenType::RightBrace,
+            String::from("Expect '}' after block."),
+            self.scanner.clone(),
+        );
     }
 
     fn match_token(&mut self, token_type: TokenType) -> bool {
@@ -359,20 +597,32 @@ impl<'a> Compiler<'a> {
     }
 
     fn check_token(&self, token_type: TokenType) -> bool {
-        let current_token = self.parser.current.as_ref().unwrap_or_else(|| { panic!("Parser does not have current token processed!") });
+        let current_token = self
+            .parser
+            .current
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have current token processed!"));
         let current_type = current_token.token_type.clone();
         return current_type == token_type;
     }
 
     fn print_statement(&mut self) {
         self.expression();
-        self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::Semicolon,
+            String::from("Expect ';' after value"),
+            self.scanner.clone(),
+        );
         self.emit_byte(OpCode::OpPrint);
     }
 
     fn expression_statement(&mut self) {
         self.expression();
-        self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after value"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::Semicolon,
+            String::from("Expect ';' after value"),
+            self.scanner.clone(),
+        );
         self.emit_byte(OpCode::OpPop);
     }
     pub fn expression(&mut self) {
@@ -381,24 +631,49 @@ impl<'a> Compiler<'a> {
 
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.parser.advance(self.scanner.clone());
-        let previous_token: usize = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone().into();
+        let previous_token: usize = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .token_type
+            .clone()
+            .into();
         let prefix_rule = self.rules[previous_token].prefix;
 
         let can_assign = precedence as usize <= Precedence::Assignment as usize;
         if let Some(prefix) = prefix_rule {
             prefix(self, can_assign);
         } else {
-            self.parser.error(String::from("Expect expression."), self.source);
+            self.parser
+                .error(String::from("Expect expression."), self.source);
             return;
         }
 
-        let mut current_token_type = self.parser.current.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
+        let mut current_token_type = self
+            .parser
+            .current
+            .as_ref()
+            .unwrap_or_else(|| panic!("No token has been processed!"))
+            .token_type
+            .clone();
         let mut current_token_index: usize = current_token_type.clone().into();
-        let mut current_token_precedence = self.rules.get(current_token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", current_token_type.clone()) }).precedence;
+        let mut current_token_precedence = self
+            .rules
+            .get(current_token_index)
+            .unwrap_or_else(|| panic!("No rule for token type: {}", current_token_type.clone()))
+            .precedence;
 
         while precedence as usize <= current_token_precedence as usize {
             self.parser.advance(self.scanner.clone());
-            let previous_token: usize = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone().into();
+            let previous_token: usize = self
+                .parser
+                .previous
+                .as_ref()
+                .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+                .token_type
+                .clone()
+                .into();
             let infix_rule = self.rules[previous_token].infix;
             if let Some(infix) = infix_rule {
                 infix(self, can_assign);
@@ -406,13 +681,24 @@ impl<'a> Compiler<'a> {
                 break;
             }
 
-            current_token_type = self.parser.current.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
+            current_token_type = self
+                .parser
+                .current
+                .as_ref()
+                .unwrap_or_else(|| panic!("No token has been processed!"))
+                .token_type
+                .clone();
             current_token_index = current_token_type.clone().into();
-            current_token_precedence = self.rules.get(current_token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", current_token_type.clone()) }).precedence;
+            current_token_precedence = self
+                .rules
+                .get(current_token_index)
+                .unwrap_or_else(|| panic!("No rule for token type: {}", current_token_type.clone()))
+                .precedence;
         }
 
         if can_assign && self.match_token(TokenType::Equal) {
-            self.parser.error(String::from("Invalid assignment target"), self.source);
+            self.parser
+                .error(String::from("Invalid assignment target"), self.source);
         }
     }
 
@@ -421,16 +707,32 @@ impl<'a> Compiler<'a> {
     }
 
     fn emit_byte(&mut self, byte: OpCode) {
-        self.compiling_chunk.as_mut()
-            .unwrap_or_else(|| { panic!("Current chunk is not set!") })
-            .write_chunk(byte, self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).line);
+        self.compiling_chunk
+            .as_mut()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"))
+            .write_chunk(
+                byte,
+                self.parser
+                    .previous
+                    .as_ref()
+                    .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+                    .line,
+            );
     }
 
     fn emit_bytes(&mut self, bytes: &[OpCode]) {
         for byte in bytes {
-            self.compiling_chunk.as_mut()
-                .unwrap_or_else(|| { panic!("Current chunk is not set!") })
-                .write_chunk(*byte, self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).line);
+            self.compiling_chunk
+                .as_mut()
+                .unwrap_or_else(|| panic!("Current chunk is not set!"))
+                .write_chunk(
+                    *byte,
+                    self.parser
+                        .previous
+                        .as_ref()
+                        .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+                        .line,
+                );
         }
     }
 
@@ -439,7 +741,10 @@ impl<'a> Compiler<'a> {
     }
 
     fn emit_constant(&mut self, value: Value) {
-        let chunk = self.compiling_chunk.as_mut().unwrap_or_else(|| { panic!("Current chunk is not set!") });
+        let chunk = self
+            .compiling_chunk
+            .as_mut()
+            .unwrap_or_else(|| panic!("Current chunk is not set!"));
         let mut offset = chunk.has_constant(&value);
         if offset == -1 {
             offset = chunk.add_constant(value) as isize;
@@ -449,24 +754,40 @@ impl<'a> Compiler<'a> {
     }
 
     fn number(&mut self, _can_assign: bool) {
-        let value: Number = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
-            .get_token_string(self.source).parse::<Number>().unwrap_or_else(|_| { panic!("Could not parse token value to number!") });
+        let value: Number = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .get_token_string(self.source)
+            .parse::<Number>()
+            .unwrap_or_else(|_| panic!("Could not parse token value to number!"));
         self.emit_constant(Value::ValNumber(value));
     }
 
     fn literal(&mut self, _can_assign: bool) {
-        let token_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
+        let token_type = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("No token has been processed!"))
+            .token_type
+            .clone();
 
         match token_type {
             TokenType::True => self.emit_byte(OpCode::OpTrue),
             TokenType::False => self.emit_byte(OpCode::OpFalse),
             TokenType::Nil => self.emit_byte(OpCode::OpNil),
-            _ => return
+            _ => return,
         }
     }
 
     fn string(&mut self, _can_assign: bool) {
-        let value = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") })
+        let value = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
             .get_token_string(self.source);
         let string_literal = &value[1..value.len() - 1].to_string();
         self.emit_constant(Value::ValString(string_literal.to_owned()));
@@ -474,26 +795,46 @@ impl<'a> Compiler<'a> {
 
     fn grouping(&mut self, _can_assign: bool) {
         self.expression();
-        self.parser.consume(TokenType::RightParen, String::from("Expect ')' after expression"), self.scanner.clone());
+        self.parser.consume(
+            TokenType::RightParen,
+            String::from("Expect ')' after expression"),
+            self.scanner.clone(),
+        );
     }
 
     fn unary(&mut self, _can_assign: bool) {
-        let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("Parser does not have processed token!") }).token_type.clone();
+        let operator_type = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .token_type
+            .clone();
 
         self.parse_precedence(Precedence::Unary);
 
         match operator_type {
             TokenType::Minus => self.emit_byte(OpCode::OpNegate),
             TokenType::Bang => self.emit_byte(OpCode::OpNot),
-            _ => return
+            _ => return,
         }
     }
 
     fn binary(&mut self, _can_assign: bool) {
-        let operator_type = self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).token_type.clone();
+        let operator_type = self
+            .parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("No token has been processed!"))
+            .token_type
+            .clone();
         let token_index: usize = operator_type.clone().into();
-        let rule = self.rules.get(token_index).unwrap_or_else(|| { panic!("No rule for token type: {}", operator_type.clone()) });
-        let next_precedence: Option<Precedence> = num::FromPrimitive::from_usize((rule.precedence as usize) + 1);
+        let rule = self
+            .rules
+            .get(token_index)
+            .unwrap_or_else(|| panic!("No rule for token type: {}", operator_type.clone()));
+        let next_precedence: Option<Precedence> =
+            num::FromPrimitive::from_usize((rule.precedence as usize) + 1);
         self.parse_precedence(next_precedence.unwrap());
 
         match operator_type {
@@ -507,7 +848,7 @@ impl<'a> Compiler<'a> {
             TokenType::Less => self.emit_byte(OpCode::OpLess),
             TokenType::GreaterEqual => self.emit_bytes(&[OpCode::OpLess, OpCode::OpNot]),
             TokenType::LessEqual => self.emit_bytes(&[OpCode::OpGreater, OpCode::OpNot]),
-            _ => return
+            _ => return,
         }
     }
 
@@ -530,7 +871,14 @@ impl<'a> Compiler<'a> {
     }
 
     fn variable(&mut self, can_assign: bool) {
-        self.named_variable(self.parser.previous.as_ref().unwrap_or_else(|| { panic!("No token has been processed!") }).clone(), can_assign);
+        self.named_variable(
+            self.parser
+                .previous
+                .as_ref()
+                .unwrap_or_else(|| panic!("No token has been processed!"))
+                .clone(),
+            can_assign,
+        );
     }
 
     fn named_variable(&mut self, identifier: Token, can_assign: bool) {
@@ -560,7 +908,10 @@ impl<'a> Compiler<'a> {
             let local = &self.locals[i];
             if self.identifiers_equal(&local.token, &identifier) {
                 if local.depth == -1 {
-                    self.parser.error(String::from("Can't read local variable in its own initializer"), self.source);
+                    self.parser.error(
+                        String::from("Can't read local variable in its own initializer"),
+                        self.source,
+                    );
                 }
                 return i as isize;
             }

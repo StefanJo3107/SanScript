@@ -8,15 +8,23 @@ fn main() {
     // print 4/3;
     // print \" \";
     // let a = 3+2;";
-    let source = "let prom = \"chrono\";
+    let source = "
+    let prom = \"chrono\";
     let i = 0;
+
     while(i<5)
     {
         print i;
         i = i + 1;
     }
+   
+    for(let i = 5;i<10;i=i+1){
+        print i;
+    }
+    
     prom = prom + \" trigger\";
     print prom;
+    
     if (prom == \"chroono trigger\"){
         print \"Hello\";
         print \"World\";
