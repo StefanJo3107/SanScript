@@ -1,9 +1,9 @@
-use crate::value::ValueArray;
 use crate::value::Value;
+use crate::value::ValueArray;
 use strum_macros::Display;
 
 #[repr(u8)]
-#[derive(Copy, Clone, Display, Debug)]
+#[derive(Copy, Clone, Display, Debug, PartialEq)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum OpCode {
     OpReturn,
@@ -30,9 +30,10 @@ pub enum OpCode {
     OpJumpIfFalse(usize),
     OpJumpIfTrue(usize),
     OpJump(usize),
-    OpLoop(usize)
+    OpLoop(usize),
 }
 
+#[derive(Clone, PartialEq)]
 pub struct Chunk {
     code: Vec<OpCode>,
     constants: ValueArray,
@@ -41,7 +42,11 @@ pub struct Chunk {
 
 impl Chunk {
     pub fn new() -> Chunk {
-        Chunk { code: vec![], constants: ValueArray::new(), lines: vec![] }
+        Chunk {
+            code: vec![],
+            constants: ValueArray::new(),
+            lines: vec![],
+        }
     }
 
     pub fn len(&self) -> usize {
