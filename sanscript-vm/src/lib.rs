@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use sanscript_common::chunk::{Chunk, OpCode};
-use sanscript_common::debug::{disassemble_chunk, disassemble_instruction};
+use sanscript_common::debug::disassemble_instruction;
 use sanscript_common::value::{Value, ValueArray};
 use sanscript_frontend::compiler::Compiler;
 use sanscript_frontend::scanner::Scanner;
@@ -24,7 +24,7 @@ const STACK_SIZE: usize = 256;
 
 
 pub struct VM {
-    chunk: Chunk,
+    chunk: Option<Chunk>,
     ip: usize,
     stack: Vec<Value>,
     globals: HashMap<String, Value>,
@@ -34,7 +34,7 @@ pub struct VM {
 impl VM {
     pub fn new(debug_level: DebugLevel) -> VM {
         VM {
-            chunk: Chunk::new(),
+            chunk: None,
             ip: 0,
             stack: vec![],
             globals: HashMap::new(),
@@ -55,15 +55,15 @@ impl VM {
         let mut chunk = Chunk::new();
         let mut compiler = Compiler::new(source.as_str());
 
-        if !compiler.compile(&mut chunk) {
-            return InterpretCompileError;
+        if let Some(function) = compiler.compile() {
+            self.chunk = Some(function.chunk.clone());
+            self.ip = 0;
+
+            let result = self.run();
+            return result;
         }
 
-        self.chunk = chunk;
-        self.ip = 0;
-
-        let result = self.run();
-        return result;
+        return InterpretCompileError;
     }
 
     fn is_number_operands(&self) -> bool {
@@ -107,7 +107,7 @@ impl VM {
         let mut print_ip = self.ip;
 
         loop {
-            let instruction: &OpCode = self.chunk.get_code(self.ip);
+            let instruction: &OpCode = self.chunk.as_ref().unwrap().get_code(self.ip);
 
             if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
                 for ip in print_ip..self.ip + 1 {
@@ -116,7 +116,7 @@ impl VM {
                     } else {
                         print!("\x1b[0m{:0>6} |", print_offsets.last().unwrap());
                     }
-                    let off = disassemble_instruction(&self.chunk, ip, &mut print_offsets);
+                    let off = disassemble_instruction(&self.chunk.as_ref().unwrap(), ip, &mut print_offsets);
                     print_offsets.push(off);
                     //printing stack
                     for value in self.stack.iter() {
@@ -153,17 +153,17 @@ impl VM {
                     self.stack.pop();
                 }
                 OpCode::OpConstant(constant_addr) => {
-                    let constant = self.chunk.get_constant(constant_addr.to_owned());
+                    let constant = self.chunk.as_ref().unwrap().get_constant(constant_addr.to_owned());
                     self.stack.push(constant.to_owned());
                 }
                 OpCode::OpDefineGlobal(global_addr) => {
-                    let name_value = self.chunk.get_constant(global_addr.to_owned());
+                    let name_value = self.chunk.as_ref().unwrap().get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
                     }
                 }
                 OpCode::OpGetGlobal(global_addr) => {
-                    let name_value = self.chunk.get_constant(global_addr.to_owned());
+                    let name_value = self.chunk.as_ref().unwrap().get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         if let Some(var_value) = self.globals.get(name) {
                             self.stack.push(var_value.to_owned());
@@ -174,7 +174,7 @@ impl VM {
                     }
                 }
                 OpCode::OpSetGlobal(global_addr) => {
-                    let name_value = self.chunk.get_constant(global_addr.to_owned());
+                    let name_value = self.chunk.as_ref().unwrap().get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         if let Some(_) = self.globals.get(name) {
                             self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
@@ -287,7 +287,7 @@ impl VM {
     pub fn runtime_error(&mut self, message: &str) {
         eprintln!("{}", message);
 
-        eprintln!("[line {}] in script", self.chunk.get_line(self.ip - 1));
+        eprintln!("[line {}] in script", self.chunk.as_ref().unwrap().get_line(self.ip - 1));
         self.stack = vec![];
     }
 }

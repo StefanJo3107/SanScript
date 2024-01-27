@@ -5,11 +5,12 @@ use crate::ScannerRef;
 use num_derive::FromPrimitive;
 use sanscript_common::chunk::OpCode::OpConstant;
 use sanscript_common::chunk::{Chunk, OpCode};
-use sanscript_common::value::{Number, Value};
+use sanscript_common::value::{FunctionData, FunctionType, Number, Value};
 use std::cell::RefCell;
 use std::isize;
 use std::rc::Rc;
 use strum::EnumCount;
+use sanscript_common::debug::disassemble_chunk;
 
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
@@ -53,7 +54,8 @@ pub struct Local {
 
 pub struct Compiler<'a> {
     parser: Parser,
-    compiling_chunk: Option<&'a mut Chunk>,
+    function: FunctionData,
+    function_type: FunctionType,
     rules: Vec<ParseRule<'a>>,
     scanner: ScannerRef<'a>,
     source: &'a str,
@@ -65,12 +67,13 @@ impl<'a> Compiler<'a> {
     pub fn new(source: &'a str) -> Compiler<'a> {
         let mut compiler = Compiler {
             parser: Parser::new(),
-            compiling_chunk: None,
+            function: FunctionData::new(),
+            function_type: FunctionType::Script,
             rules: vec![
                 ParseRule {
                     infix: None,
                     prefix: None,
-                    precedence: Precedence::None
+                    precedence: Precedence::None,
                 };
                 TokenType::COUNT + 1
             ],
@@ -250,17 +253,26 @@ impl<'a> Compiler<'a> {
         compiler
     }
 
-    pub fn compile(&mut self, chunk: &'a mut Chunk) -> bool {
-        self.compiling_chunk = Some(chunk);
+    fn get_chunk(&self) -> &Chunk {
+        &self
+            .function.chunk
+    }
 
+    fn get_chunk_mut(&mut self) -> &mut Chunk {
+        &mut self
+            .function.chunk
+    }
+
+    pub fn compile(&mut self) -> Option<&FunctionData> {
         self.parser.advance(self.scanner.clone());
 
         while !self.match_token(TokenType::EOF) {
             self.declaration();
         }
 
-        self.end_compiler();
-        return !self.parser.had_error;
+        let had_error = self.parser.had_error;
+        let function = self.end_compiler();
+        if !had_error { Some(function) } else { None }
     }
 
     fn declaration(&mut self) {
@@ -346,10 +358,7 @@ impl<'a> Compiler<'a> {
 
     fn identifier_constant(&mut self, identifier: Token) -> usize {
         let token_string = identifier.get_token_string(self.source);
-        let chunk = self
-            .compiling_chunk
-            .as_mut()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"));
+        let chunk = self.get_chunk_mut();
         let ident_value = Value::ValString(token_string);
         let offset = chunk.has_constant(&ident_value);
         if offset == -1 {
@@ -421,11 +430,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn while_statement(&mut self) {
-        let loop_start = self
-            .compiling_chunk
-            .as_ref()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"))
-            .len();
+        let loop_start = self.get_chunk().len();
         self.parser.consume(
             TokenType::LeftParen,
             String::from("Expect '(' after 'while'"),
@@ -453,18 +458,13 @@ impl<'a> Compiler<'a> {
             String::from("Expect '(' after 'for'"),
             self.scanner.clone(),
         );
-        if self.match_token(TokenType::Semicolon) {
-        } else if self.match_token(TokenType::Let) {
+        if self.match_token(TokenType::Semicolon) {} else if self.match_token(TokenType::Let) {
             self.variable_declaration();
         } else {
             self.expression_statement();
         }
 
-        let mut loop_start = self
-            .compiling_chunk
-            .as_ref()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"))
-            .len();
+        let mut loop_start = self.get_chunk().len();
         let mut exit_jump = 0;
         if !self.match_token(TokenType::Semicolon) {
             self.expression();
@@ -479,11 +479,7 @@ impl<'a> Compiler<'a> {
 
         if !self.match_token(TokenType::RightParen) {
             let body_jump = self.emit_jump(OpCode::OpJump(0xff));
-            let increment_start = self
-                .compiling_chunk
-                .as_ref()
-                .unwrap_or_else(|| panic!("Current chunk is not set!"))
-                .len();
+            let increment_start = self.get_chunk().len();
             self.expression();
             self.emit_byte(OpCode::OpPop);
             self.parser.consume(
@@ -509,26 +505,12 @@ impl<'a> Compiler<'a> {
 
     fn emit_jump(&mut self, instruction: OpCode) -> usize {
         self.emit_byte(instruction);
-        self.compiling_chunk
-            .as_ref()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"))
-            .len()
-            - 1
+        self.get_chunk().len() - 1
     }
 
     fn patch_jump(&mut self, address: usize) {
-        let jump = self
-            .compiling_chunk
-            .as_ref()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"))
-            .len()
-            - address
-            - 1;
-        let new_code = match self
-            .compiling_chunk
-            .as_ref()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"))
-            .get_code(address)
+        let jump = self.get_chunk().len() - address - 1;
+        let new_code = match self.get_chunk().get_code(address)
         {
             OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
             OpCode::OpJumpIfTrue(value) => Some(OpCode::OpJumpIfTrue(jump)),
@@ -537,21 +519,13 @@ impl<'a> Compiler<'a> {
         };
 
         if let Some(code) = new_code {
-            self.compiling_chunk
-                .as_mut()
-                .unwrap_or_else(|| panic!("Current chunk is not set!"))
-                .set_code(code, address);
+            self.get_chunk_mut().set_code(code, address);
         }
     }
 
     fn emit_loop(&mut self, loop_start: usize) {
         self.emit_byte(OpCode::OpLoop(
-            self.compiling_chunk
-                .as_ref()
-                .unwrap_or_else(|| panic!("Current chunk is not set!"))
-                .len()
-                - loop_start
-                + 1,
+            self.get_chunk().len() - loop_start + 1,
         ));
     }
 
@@ -702,37 +676,32 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn end_compiler(&mut self) {
+    fn end_compiler(&mut self) -> &FunctionData {
         self.emit_return();
+        &self.function
     }
 
     fn emit_byte(&mut self, byte: OpCode) {
-        self.compiling_chunk
-            .as_mut()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"))
-            .write_chunk(
-                byte,
-                self.parser
-                    .previous
-                    .as_ref()
-                    .unwrap_or_else(|| panic!("Parser does not have processed token!"))
-                    .line,
-            );
+        let parser_line = self.parser
+            .previous
+            .as_ref()
+            .unwrap_or_else(|| panic!("Parser does not have processed token!")).line;
+        self.get_chunk_mut().write_chunk(
+            byte,
+            parser_line,
+        );
     }
 
     fn emit_bytes(&mut self, bytes: &[OpCode]) {
         for byte in bytes {
-            self.compiling_chunk
-                .as_mut()
-                .unwrap_or_else(|| panic!("Current chunk is not set!"))
-                .write_chunk(
-                    *byte,
-                    self.parser
-                        .previous
-                        .as_ref()
-                        .unwrap_or_else(|| panic!("Parser does not have processed token!"))
-                        .line,
-                );
+            let parser_line = self.parser
+                .previous
+                .as_ref()
+                .unwrap_or_else(|| panic!("Parser does not have processed token!")).line;
+            self.get_chunk_mut().write_chunk(
+                *byte,
+                parser_line,
+            );
         }
     }
 
@@ -741,10 +710,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn emit_constant(&mut self, value: Value) {
-        let chunk = self
-            .compiling_chunk
-            .as_mut()
-            .unwrap_or_else(|| panic!("Current chunk is not set!"));
+        let chunk = self.get_chunk_mut();
         let mut offset = chunk.has_constant(&value);
         if offset == -1 {
             offset = chunk.add_constant(value) as isize;

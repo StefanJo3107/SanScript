@@ -11,6 +11,12 @@ pub enum Value {
     ValFunction(FunctionData),
 }
 
+#[derive(Copy, Clone, PartialEq)]
+pub enum FunctionType {
+    Function,
+    Script
+}
+
 #[derive(Clone, PartialEq)]
 pub struct FunctionData {
     pub arity: usize,
@@ -56,7 +62,7 @@ impl ValueArray {
             Value::ValNumber(number) => print!("\x1B[3m{}\x1B[0m", number),
             Value::ValNil => print!("\x1B[3m{}\x1B[0m", "nil"),
             Value::ValString(string) => print!("\x1B[3m{}\x1B[0m", string),
-            Value::ValFunction(data) => print!("\x1B[3m{}\x1B[0m", data.name),
+            Value::ValFunction(data) => print!("\x1B[3m{}\x1B[0m", if data.name!="" {&data.name} else{"<script>"}),
         }
     }
 }
