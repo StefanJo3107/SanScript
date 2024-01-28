@@ -83,6 +83,9 @@ impl<'a> Compiler<'a> {
             scope_depth: 0,
         };
 
+        //TODO Add function to locals
+        // compiler.locals.push(Local{depth: 0, token: Token::new(TokenType::Nil, 0, 0, 0)});
+
         macro_rules! add_table_entry {
             ($token_type: expr, Some($prefix: expr), Some($infix: expr), $precedence: expr) => {
                 let token_index: usize = $token_type.into();
@@ -276,12 +279,25 @@ impl<'a> Compiler<'a> {
     }
 
     fn declaration(&mut self) {
-        if self.match_token(TokenType::Let) {
+        if self.match_token(TokenType::Fn) {
+            self.fn_declaration();
+        } else if self.match_token(TokenType::Let) {
             self.variable_declaration();
         } else {
             self.statement();
         }
     }
+
+    fn fn_declaration(&mut self) {
+        let global = self.parse_variable("Expect function name");
+        self.mark_initialized();
+        self.function(FunctionType::Function);
+        self.define_variable(global);
+    }
+
+    fn function(&self, fn_type: FunctionType) {
+    }
+
 
     fn variable_declaration(&mut self) {
         let var_name = self.parse_variable("Expect variable name");
@@ -378,6 +394,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn mark_initialized(&mut self) {
+        if self.scope_depth == 0 { return; }
         let local = self
             .locals
             .last_mut()

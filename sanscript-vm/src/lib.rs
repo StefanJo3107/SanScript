@@ -1,7 +1,9 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
-use sanscript_common::chunk::{Chunk, OpCode};
+use std::rc::Rc;
+use sanscript_common::chunk::OpCode;
 use sanscript_common::debug::disassemble_instruction;
-use sanscript_common::value::{Value, ValueArray};
+use sanscript_common::value::{FunctionData, Value, ValueArray};
 use sanscript_frontend::compiler::Compiler;
 use sanscript_frontend::scanner::Scanner;
 use crate::InterpretResult::{InterpretCompileError, InterpretOK, InterpretRuntimeError};
@@ -20,12 +22,19 @@ pub enum DebugLevel {
     Verbose,
 }
 
-const STACK_SIZE: usize = 256;
+type FrameRef = Rc<RefCell<Vec<CallFrame>>>;
 
+const STACK_SIZE: usize = 256;
+const MAX_CALL_FRAME_DEPTH: usize = 64;
+
+struct CallFrame {
+    function: FunctionData,
+    ip: usize,
+    stack_start: usize,
+}
 
 pub struct VM {
-    chunk: Option<Chunk>,
-    ip: usize,
+    frames: FrameRef,
     stack: Vec<Value>,
     globals: HashMap<String, Value>,
     debug_level: DebugLevel,
@@ -34,8 +43,7 @@ pub struct VM {
 impl VM {
     pub fn new(debug_level: DebugLevel) -> VM {
         VM {
-            chunk: None,
-            ip: 0,
+            frames: Rc::new(RefCell::new(vec![])),
             stack: vec![],
             globals: HashMap::new(),
             debug_level,
@@ -52,12 +60,13 @@ impl VM {
             scanner.tokenize_source();
         }
 
-        let mut chunk = Chunk::new();
         let mut compiler = Compiler::new(source.as_str());
 
         if let Some(function) = compiler.compile() {
-            self.chunk = Some(function.chunk.clone());
-            self.ip = 0;
+            //TODO Add function to stack
+            // let function = function.clone();
+            self.frames.borrow_mut().push(CallFrame { function: function.clone(), ip: 0, stack_start: self.stack.len() });
+
 
             let result = self.run();
             return result;
@@ -104,23 +113,27 @@ impl VM {
 
         let mut print_offsets: Vec<usize> = vec![];
         print_offsets.push(0);
-        let mut print_ip = self.ip;
+        let mut print_ip = self.frames.borrow_mut().last().unwrap().ip;
 
         loop {
-            let instruction: &OpCode = self.chunk.as_ref().unwrap().get_code(self.ip);
+            let frames_rc = self.frames.clone();
+            let mut frames_mut = frames_rc.borrow_mut();
+            let mut frame = frames_mut.last_mut().unwrap();
+            let chunk = &frame.function.chunk;
+            let instruction: &OpCode = chunk.get_code(frame.ip);
 
             if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
-                for ip in print_ip..self.ip + 1 {
-                    if self.ip - ip >= 1 {
+                for ip in print_ip..frame.ip + 1 {
+                    if frame.ip - ip >= 1 {
                         print!("\x1b[31m{:0>6} |", print_offsets.last().unwrap());
                     } else {
                         print!("\x1b[0m{:0>6} |", print_offsets.last().unwrap());
                     }
-                    let off = disassemble_instruction(&self.chunk.as_ref().unwrap(), ip, &mut print_offsets);
+                    let off = disassemble_instruction(chunk, ip, &mut print_offsets);
                     print_offsets.push(off);
                     //printing stack
                     for value in self.stack.iter() {
-                        if self.ip - ip >= 1 {
+                        if frame.ip - ip >= 1 {
                             print!("\x1b[31m[ ");
                             ValueArray::print_value(value);
                             print!("\x1b[31m ]");
@@ -135,8 +148,8 @@ impl VM {
                         println!("\x1b[0m");
                     }
                 }
-                if print_ip <= self.ip {
-                    print_ip = self.ip + 1;
+                if print_ip <= frame.ip {
+                    print_ip = frame.ip + 1;
                 }
             }
 
@@ -153,17 +166,17 @@ impl VM {
                     self.stack.pop();
                 }
                 OpCode::OpConstant(constant_addr) => {
-                    let constant = self.chunk.as_ref().unwrap().get_constant(constant_addr.to_owned());
+                    let constant = chunk.get_constant(constant_addr.to_owned());
                     self.stack.push(constant.to_owned());
                 }
                 OpCode::OpDefineGlobal(global_addr) => {
-                    let name_value = self.chunk.as_ref().unwrap().get_constant(global_addr.to_owned());
+                    let name_value = chunk.get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
                     }
                 }
                 OpCode::OpGetGlobal(global_addr) => {
-                    let name_value = self.chunk.as_ref().unwrap().get_constant(global_addr.to_owned());
+                    let name_value = chunk.get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         if let Some(var_value) = self.globals.get(name) {
                             self.stack.push(var_value.to_owned());
@@ -174,7 +187,7 @@ impl VM {
                     }
                 }
                 OpCode::OpSetGlobal(global_addr) => {
-                    let name_value = self.chunk.as_ref().unwrap().get_constant(global_addr.to_owned());
+                    let name_value = chunk.get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         if let Some(_) = self.globals.get(name) {
                             self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
@@ -185,11 +198,13 @@ impl VM {
                     }
                 }
                 OpCode::OpGetLocal(local_addr) => {
-                    let stack_val = self.stack.get(*local_addr).unwrap_or_else(|| { panic!("Stack is empty, cannot get local variable") });
+                    let stack_start = frame.stack_start;
+                    let stack_val = self.stack.get(stack_start + *local_addr).unwrap_or_else(|| { panic!("Stack is empty, cannot get local variable") });
                     self.stack.push(stack_val.clone());
                 }
                 OpCode::OpSetLocal(local_addr) => {
-                    self.stack[*local_addr] = self.stack.last().unwrap_or_else(|| { panic!("Stack is empty, cannot set local variable") }).clone();
+                    let stack_start = frame.stack_start;
+                    self.stack[stack_start + *local_addr] = self.stack.last().unwrap_or_else(|| { panic!("Stack is empty, cannot set local variable") }).clone();
                 }
                 OpCode::OpNegate => {
                     if let Some(Value::ValNumber(number)) = self.stack.last() {
@@ -245,23 +260,23 @@ impl VM {
                 }
                 OpCode::OpJumpIfFalse(offset) => {
                     if self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
-                        self.ip += offset;
+                        frame.ip += offset;
                     }
                 }
                 OpCode::OpJumpIfTrue(offset) => {
                     if !self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
-                        self.ip += offset;
+                        frame.ip += offset;
                     }
                 }
                 OpCode::OpJump(offset) => {
-                    self.ip += offset;
+                    frame.ip += offset;
                 }
                 OpCode::OpLoop(offset) => {
-                    self.ip -= offset;
+                    frame.ip -= offset;
                 }
             };
 
-            self.ip += 1;
+            frame.ip += 1;
         }
     }
 
@@ -287,7 +302,7 @@ impl VM {
     pub fn runtime_error(&mut self, message: &str) {
         eprintln!("{}", message);
 
-        eprintln!("[line {}] in script", self.chunk.as_ref().unwrap().get_line(self.ip - 1));
+        eprintln!("[line {}] in script", self.frames.borrow_mut().last().unwrap().function.chunk.get_line(self.frames.borrow_mut().last().unwrap().ip - 1));
         self.stack = vec![];
     }
 }
