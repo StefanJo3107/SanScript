@@ -10,8 +10,6 @@ use std::cell::RefCell;
 use std::isize;
 use std::rc::Rc;
 use strum::EnumCount;
-use sanscript_common::debug::disassemble_chunk;
-
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
 enum Precedence {
@@ -64,28 +62,7 @@ pub struct Compiler<'a> {
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(source: &'a str) -> Compiler<'a> {
-        let mut compiler = Compiler {
-            parser: Parser::new(),
-            function: FunctionData::new(),
-            function_type: FunctionType::Script,
-            rules: vec![
-                ParseRule {
-                    infix: None,
-                    prefix: None,
-                    precedence: Precedence::None,
-                };
-                TokenType::COUNT + 1
-            ],
-            scanner: Rc::new(RefCell::new(Scanner::new(source))),
-            source,
-            locals: vec![],
-            scope_depth: 0,
-        };
-
-        //TODO Add function to locals
-        // compiler.locals.push(Local{depth: 0, token: Token::new(TokenType::Nil, 0, 0, 0)});
-
+    pub fn token_table_init(compiler: &mut Compiler) {
         macro_rules! add_table_entry {
             ($token_type: expr, Some($prefix: expr), Some($infix: expr), $precedence: expr) => {
                 let token_index: usize = $token_type.into();
@@ -252,7 +229,58 @@ impl<'a> Compiler<'a> {
         let error_token = TokenType::Error("".to_string());
         add_table_entry!(error_token, None, None, Precedence::None);
         add_table_entry!(TokenType::EOF, None, None, Precedence::None);
+    }
+    pub fn new(source: &'a str, function_type: FunctionType) -> Compiler<'a> {
+        let mut compiler = Compiler {
+            parser: Parser::new(),
+            function: FunctionData::new(),
+            function_type,
+            rules: vec![
+                ParseRule {
+                    infix: None,
+                    prefix: None,
+                    precedence: Precedence::None,
+                };
+                TokenType::COUNT + 1
+            ],
+            scanner: Rc::new(RefCell::new(Scanner::new(source))),
+            source,
+            locals: vec![],
+            scope_depth: 0,
+        };
 
+        if function_type != FunctionType::Script{
+            compiler.function.name = compiler.parser.previous.as_ref().unwrap().get_token_string(compiler.source);
+        }
+        compiler.locals.push(Local { depth: 0, token: Token::new(TokenType::Nil, 0, 0, 0) });
+        Compiler::token_table_init(&mut compiler);
+        compiler
+    }
+
+    pub fn new_from_existing(parser: Parser, scanner: ScannerRef<'a>, source: &'a str, function_type: FunctionType) -> Compiler<'a> {
+        let mut compiler = Compiler {
+            parser,
+            function: FunctionData::new(),
+            function_type,
+            rules: vec![
+                ParseRule {
+                    infix: None,
+                    prefix: None,
+                    precedence: Precedence::None,
+                };
+                TokenType::COUNT + 1
+            ],
+            scanner,
+            source,
+            locals: vec![],
+            scope_depth: 0,
+        };
+
+        if function_type != FunctionType::Script{
+            compiler.function.name = compiler.parser.previous.as_ref().unwrap().get_token_string(compiler.source);
+        }
+        compiler.locals.push(Local { depth: 0, token: Token::new(TokenType::Nil, 0, 0, 0) });
+        Compiler::token_table_init(&mut compiler);
         compiler
     }
 
@@ -266,7 +294,7 @@ impl<'a> Compiler<'a> {
             .function.chunk
     }
 
-    pub fn compile(&mut self) -> Option<&FunctionData> {
+    pub fn compile(&mut self) -> Option<FunctionData> {
         self.parser.advance(self.scanner.clone());
 
         while !self.match_token(TokenType::EOF) {
@@ -295,7 +323,35 @@ impl<'a> Compiler<'a> {
         self.define_variable(global);
     }
 
-    fn function(&self, fn_type: FunctionType) {
+    fn function(&mut self, function_type: FunctionType) {
+        let mut compiler = Compiler::new_from_existing(self.parser.clone(), self.scanner.clone(), self.source.clone(), function_type);
+
+        compiler.begin_scope();
+        compiler.parser.consume(TokenType::LeftParen, String::from("Expect '(' after function name"), self.scanner.clone());
+        if !compiler.check_token(TokenType::RightParen){
+            loop{
+                compiler.function.arity+=1;
+                if compiler.function.arity > 255 {
+                    compiler.parser.error(String::from("Can't have more tha 255 parameters"), compiler.source);
+                }
+
+                let constant = compiler.parse_variable("Expect parameter name");
+                compiler.define_variable(constant);
+
+                if !compiler.match_token(TokenType::Comma){
+                    break;
+                }
+            }
+        }
+        compiler.parser.consume(TokenType::RightParen, String::from("Expect ')' after parameters"), self.scanner.clone());
+        compiler.parser.consume(TokenType::LeftBrace, String::from("Expect '{' before function body"), self.scanner.clone());
+        compiler.block();
+
+        let function = compiler.end_compiler();
+        let offset = self.get_chunk_mut().add_constant(Value::ValFunction(function));
+        self.emit_byte(OpConstant(offset));
+        self.parser = compiler.parser;
+        self.scanner = compiler.scanner;
     }
 
 
@@ -693,9 +749,9 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn end_compiler(&mut self) -> &FunctionData {
+    fn end_compiler(&mut self) -> FunctionData {
         self.emit_return();
-        &self.function
+        self.function.clone()
     }
 
     fn emit_byte(&mut self, byte: OpCode) {

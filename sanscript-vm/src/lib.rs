@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use sanscript_common::chunk::OpCode;
 use sanscript_common::debug::disassemble_instruction;
-use sanscript_common::value::{FunctionData, Value, ValueArray};
+use sanscript_common::value::{FunctionData, FunctionType, Value, ValueArray};
 use sanscript_frontend::compiler::Compiler;
 use sanscript_frontend::scanner::Scanner;
 use crate::InterpretResult::{InterpretCompileError, InterpretOK, InterpretRuntimeError};
@@ -60,13 +60,11 @@ impl VM {
             scanner.tokenize_source();
         }
 
-        let mut compiler = Compiler::new(source.as_str());
+        let mut compiler = Compiler::new(source.as_str(), FunctionType::Script);
 
         if let Some(function) = compiler.compile() {
-            //TODO Add function to stack
-            // let function = function.clone();
-            self.frames.borrow_mut().push(CallFrame { function: function.clone(), ip: 0, stack_start: self.stack.len() });
-
+            self.stack.push(Value::ValFunction(function.clone()));
+            self.frames.borrow_mut().push(CallFrame { function, ip: 0, stack_start: self.stack.len() - 1});
 
             let result = self.run();
             return result;
@@ -190,7 +188,7 @@ impl VM {
                     let name_value = chunk.get_constant(global_addr.to_owned());
                     if let Value::ValString(name) = name_value {
                         if let Some(_) = self.globals.get(name) {
-                            self.globals.insert(name.to_owned(), self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }));
+                            self.globals.insert(name.to_owned(), self.stack.last().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }).clone());
                         } else {
                             self.runtime_error(format!("Undefined variable '{}'", name).as_str());
                             return InterpretRuntimeError;

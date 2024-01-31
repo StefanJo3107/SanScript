@@ -9,6 +9,10 @@ fn main() {
     // print \" \";
     // let a = 3+2;";
     let source = "
+    fn funkcija(){
+        print \"Hello\";
+    }
+    print funkcija;
     let prom = \"chrono\";
     let i = 0;
 

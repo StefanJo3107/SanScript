@@ -1,6 +1,7 @@
 use crate::ScannerRef;
 use crate::token::{Token, TokenType};
 
+#[derive(Clone)]
 pub struct Parser {
     pub current: Option<Token>,
     pub previous: Option<Token>,
