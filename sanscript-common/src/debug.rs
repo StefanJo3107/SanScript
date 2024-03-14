@@ -73,7 +73,7 @@ fn matches_constant_instruction(opcode: &OpCode) -> (bool, usize) {
 fn matches_byte_instruction(opcode: &OpCode) -> (bool, usize) {
     match opcode
     {
-        OpCode::OpGetLocal(value) | OpCode::OpSetLocal(value) => (true, *value),
+        OpCode::OpGetLocal(value) | OpCode::OpSetLocal(value) | OpCode::OpCall(value) => (true, *value),
         _ => (false, 0)
     }
 }

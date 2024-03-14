@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::isize;
 use std::rc::Rc;
 use strum::EnumCount;
+
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
 enum Precedence {
@@ -101,8 +102,8 @@ impl<'a> Compiler<'a> {
         add_table_entry!(
             TokenType::LeftParen,
             Some(Compiler::grouping),
-            None,
-            Precedence::None
+            Some(Compiler::call),
+            Precedence::Call
         );
         add_table_entry!(TokenType::RightParen, None, None, Precedence::None);
         add_table_entry!(TokenType::LeftBrace, None, None, Precedence::None);
@@ -249,7 +250,7 @@ impl<'a> Compiler<'a> {
             scope_depth: 0,
         };
 
-        if function_type != FunctionType::Script{
+        if function_type != FunctionType::Script {
             compiler.function.name = compiler.parser.previous.as_ref().unwrap().get_token_string(compiler.source);
         }
         compiler.locals.push(Local { depth: 0, token: Token::new(TokenType::Nil, 0, 0, 0) });
@@ -276,7 +277,7 @@ impl<'a> Compiler<'a> {
             scope_depth: 0,
         };
 
-        if function_type != FunctionType::Script{
+        if function_type != FunctionType::Script {
             compiler.function.name = compiler.parser.previous.as_ref().unwrap().get_token_string(compiler.source);
         }
         compiler.locals.push(Local { depth: 0, token: Token::new(TokenType::Nil, 0, 0, 0) });
@@ -328,9 +329,9 @@ impl<'a> Compiler<'a> {
 
         compiler.begin_scope();
         compiler.parser.consume(TokenType::LeftParen, String::from("Expect '(' after function name"), self.scanner.clone());
-        if !compiler.check_token(TokenType::RightParen){
-            loop{
-                compiler.function.arity+=1;
+        if !compiler.check_token(TokenType::RightParen) {
+            loop {
+                compiler.function.arity += 1;
                 if compiler.function.arity > 255 {
                     compiler.parser.error(String::from("Can't have more tha 255 parameters"), compiler.source);
                 }
@@ -338,7 +339,7 @@ impl<'a> Compiler<'a> {
                 let constant = compiler.parse_variable("Expect parameter name");
                 compiler.define_variable(constant);
 
-                if !compiler.match_token(TokenType::Comma){
+                if !compiler.match_token(TokenType::Comma) {
                     break;
                 }
             }
@@ -354,6 +355,26 @@ impl<'a> Compiler<'a> {
         self.scanner = compiler.scanner;
     }
 
+    fn call(&mut self, _can_assign: bool) {
+        let arg_count = self.argument_list();
+        self.emit_byte(OpCode::OpCall(arg_count));
+    }
+
+    fn argument_list(&mut self) -> usize {
+        let mut arg_count = 0;
+        if !self.check_token(TokenType::RightParen) {
+            loop {
+                self.expression();
+                arg_count += 1;
+                if self.match_token(TokenType::RightParen) {
+                    break;
+                }
+            }
+        }
+
+        self.parser.consume(TokenType::RightParen, String::from("Expect ')' after arguments"), self.scanner.clone());
+        arg_count
+    }
 
     fn variable_declaration(&mut self) {
         let var_name = self.parse_variable("Expect variable name");

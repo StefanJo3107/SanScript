@@ -31,6 +31,7 @@ pub enum OpCode {
     OpJumpIfTrue(usize),
     OpJump(usize),
     OpLoop(usize),
+    OpCall(usize),
 }
 
 #[derive(Clone, PartialEq)]

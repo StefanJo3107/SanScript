@@ -64,8 +64,13 @@ impl VM {
 
         if let Some(function) = compiler.compile() {
             self.stack.push(Value::ValFunction(function.clone()));
-            self.frames.borrow_mut().push(CallFrame { function, ip: 0, stack_start: self.stack.len() - 1});
-
+            self.frames.borrow_mut().push(CallFrame { function: function.clone(), ip: 0, stack_start: self.stack.len() - 1 });
+            let mut frames_cloned = self.frames.clone();
+            let mut frames_borrowed = frames_cloned.borrow_mut();
+            let mut frame = frames_borrowed.last_mut().unwrap_or_else(||{panic!("Call frame vector is empty!")});
+            self.call(function, frame, 0);
+            //should drop frames_borrowed because frames get borrowed mutably inside self.run
+            drop(frames_borrowed);
             let result = self.run();
             return result;
         }
@@ -272,13 +277,36 @@ impl VM {
                 OpCode::OpLoop(offset) => {
                     frame.ip -= offset;
                 }
+                OpCode::OpCall(arg_count) => {
+                    let callee = self.stack.get(self.stack.len() - 1 - arg_count).unwrap_or_else(|| { panic!("Couldn't get callee value!") }).clone();
+                    if !self.call_value(callee, frame, *arg_count) {
+                        return InterpretRuntimeError;
+                    }
+                    continue;
+                }
             };
 
             frame.ip += 1;
         }
     }
 
-    pub fn is_falsey(&self, value: Value) -> bool {
+    fn call_value(&mut self, callee: Value, frame: &mut CallFrame, arg_count: usize) -> bool {
+        if let Value::ValFunction(func) = callee {
+            return self.call(func, frame, arg_count);
+        }
+
+        self.runtime_error("Can only call functions");
+        false
+    }
+
+    fn call(&mut self, func: FunctionData, frame: &mut CallFrame, arg_count: usize) -> bool {
+        frame.function = func;
+        frame.ip = 0;
+        frame.stack_start = self.stack.len() - arg_count - 1;
+        true
+    }
+
+    fn is_falsey(&self, value: Value) -> bool {
         return match value {
             Value::ValBool(boolean) => !boolean,
             Value::ValNumber(number) => number == 0.0,
@@ -287,7 +315,7 @@ impl VM {
         };
     }
 
-    pub fn equals(&self, a: Value, b: Value) -> bool {
+    fn equals(&self, a: Value, b: Value) -> bool {
         return match (a, b) {
             (Value::ValNumber(num_a), Value::ValNumber(num_b)) => num_a == num_b,
             (Value::ValBool(bool_a), Value::ValBool(bool_b)) => bool_a == bool_b,
