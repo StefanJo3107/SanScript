@@ -9,13 +9,12 @@ fn main() {
     // print \" \";
     // let a = 3+2;";
     let source = "
-    fn funkcija(){
-        let a = 2;
-        let b = 3;
+    fn funkcija(a, b){
         let c = a+b;
         print \"function is called\";
         print !(5 - 4 > 3 * 2 == !nil);
         print c;
+        return c;
     }
     let prom = \"chrono\";
     let i = 0;
@@ -42,7 +41,7 @@ fn main() {
         print \"Please stand up\";
     }
 
-    funkcija();
+    funkcija(2,3);
 
     {
         let a = 3;
@@ -63,6 +62,6 @@ fn main() {
     println!("Source code:\n\t{}", source);
     println!();
 
-    let mut vm = VM::new(DebugLevel::Verbose);
+    let mut vm = VM::new(DebugLevel::None);
     vm.interpret(source.to_string());
 }

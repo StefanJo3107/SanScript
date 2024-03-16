@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt::format;
 use std::rc::Rc;
 use sanscript_common::chunk::OpCode;
 use sanscript_common::debug::disassemble_instruction;
@@ -25,11 +26,13 @@ pub enum DebugLevel {
 type FrameRef = Rc<RefCell<Vec<CallFrame>>>;
 
 const STACK_SIZE: usize = 256;
-const MAX_CALL_FRAME_DEPTH: usize = 64;
+const MAX_CALL_FRAME_DEPTH: usize = 256;
 
-struct CallFrame {
+#[derive(Clone)]
+pub struct CallFrame {
     function: FunctionData,
     ip: usize,
+    print_ip: usize,
     stack_start: usize,
 }
 
@@ -50,10 +53,6 @@ impl VM {
         }
     }
 
-    // pub fn interpret(&mut self, name: &str) -> InterpretResult {
-    //     self.run(name)
-    // }
-
     pub fn interpret(&mut self, source: String) -> InterpretResult {
         if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::TokenTableOnly {
             let mut scanner = Scanner::new(source.as_str());
@@ -64,13 +63,15 @@ impl VM {
 
         if let Some(function) = compiler.compile() {
             self.stack.push(Value::ValFunction(function.clone()));
-            self.frames.borrow_mut().push(CallFrame { function: function.clone(), ip: 0, stack_start: self.stack.len() - 1 });
+            self.frames.borrow_mut().push(CallFrame { function: function.clone(), ip: 0, print_ip: 0, stack_start: self.stack.len() - 1 });
             let mut frames_cloned = self.frames.clone();
             let mut frames_borrowed = frames_cloned.borrow_mut();
-            let mut frame = frames_borrowed.last_mut().unwrap_or_else(||{panic!("Call frame vector is empty!")});
-            self.call(function, frame, 0);
+            let frame_count = frames_borrowed.len();
+            let mut frame = frames_borrowed.last_mut().unwrap_or_else(|| { panic!("Call frame vector is empty!") });
+            self.call(function, frame, frame_count, 0);
             //should drop frames_borrowed because frames get borrowed mutably inside self.run
             drop(frames_borrowed);
+
             let result = self.run();
             return result;
         }
@@ -96,9 +97,9 @@ impl VM {
                     }
                 }
             };
-            ($value_type: path,$op: tt) => {
+            ($value_type: path,$op: tt,$frame: expr) => {
                 if !self.is_number_operands() {
-                    self.runtime_error("Operands must be numbers.");
+                    self.runtime_error("Operands must be numbers.", $frame);
                     return InterpretRuntimeError;
                 }
                 if let Value::ValNumber(b) = self.stack.pop().unwrap() {
@@ -116,17 +117,17 @@ impl VM {
 
         let mut print_offsets: Vec<usize> = vec![];
         print_offsets.push(0);
-        let mut print_ip = self.frames.borrow_mut().last().unwrap().ip;
+        let frames_rc = self.frames.clone();
+        let mut frames_mut = frames_rc.borrow_mut();
 
         loop {
-            let frames_rc = self.frames.clone();
-            let mut frames_mut = frames_rc.borrow_mut();
+            let frame_count = frames_mut.len();
             let mut frame = frames_mut.last_mut().unwrap();
             let chunk = &frame.function.chunk;
             let instruction: &OpCode = chunk.get_code(frame.ip);
 
             if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
-                for ip in print_ip..frame.ip + 1 {
+                for ip in frame.print_ip..frame.ip + 1 {
                     if frame.ip - ip >= 1 {
                         print!("\x1b[31m{:0>6} |", print_offsets.last().unwrap());
                     } else {
@@ -151,15 +152,36 @@ impl VM {
                         println!("\x1b[0m");
                     }
                 }
-                if print_ip <= frame.ip {
-                    print_ip = frame.ip + 1;
+                if frame.print_ip <= frame.ip {
+                    frame.print_ip = frame.ip + 1;
                 }
             }
 
             match instruction
             {
                 OpCode::OpReturn => {
-                    return InterpretOK;
+                    let result = self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot pop from it") });
+                    frames_mut.remove(frame_count - 1);
+                    if frame_count - 1 == 0 {
+                        self.stack.pop().unwrap_or_else(|| { panic!("Stack is empty, cannot pop from it") });
+                        return InterpretOK;
+                    }
+                    while !matches!(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty") }), Value::ValFunction(_)) {
+                        self.stack.pop();
+                    }
+                    self.stack.pop();
+
+                    if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
+                        println!("\x1B[32;1m---------------------------------------------\x1B[0m");
+                        println!();
+                    }
+
+                    if frames_mut.len() > 0 {
+                        self.stack.push(result);
+                        frame = frames_mut.last_mut().unwrap_or_else(|| { panic!("Call frame vector is empty") });
+                    } else {
+                        return InterpretOK;
+                    }
                 }
                 OpCode::OpPrint => {
                     ValueArray::print_value(&self.stack.pop().unwrap_or_else(|| { Value::ValString(String::from("")) }));
@@ -184,7 +206,7 @@ impl VM {
                         if let Some(var_value) = self.globals.get(name) {
                             self.stack.push(var_value.to_owned());
                         } else {
-                            self.runtime_error(format!("Undefined variable '{}'", name).as_str());
+                            self.runtime_error(format!("Undefined variable '{}'", name).as_str(), frame);
                             return InterpretRuntimeError;
                         }
                     }
@@ -195,7 +217,7 @@ impl VM {
                         if let Some(_) = self.globals.get(name) {
                             self.globals.insert(name.to_owned(), self.stack.last().unwrap_or_else(|| { panic!("Stack is empty, cannot define global variable") }).clone());
                         } else {
-                            self.runtime_error(format!("Undefined variable '{}'", name).as_str());
+                            self.runtime_error(format!("Undefined variable '{}'", name).as_str(), frame);
                             return InterpretRuntimeError;
                         }
                     }
@@ -215,13 +237,13 @@ impl VM {
                         //remove element that used to be last
                         self.stack.remove(self.stack.len() - 2);
                     } else {
-                        self.runtime_error("Operand must be a number.");
+                        self.runtime_error("Operand must be a number.", frame);
                         return InterpretRuntimeError;
                     }
                 }
                 OpCode::OpAdd => {
                     if self.is_number_operands() {
-                        binary_op!(Value::ValNumber, +);
+                        binary_op!(Value::ValNumber, +, frame);
                     }
 
                     if self.is_string_operands() {
@@ -229,13 +251,13 @@ impl VM {
                     }
                 }
                 OpCode::OpSubtract => {
-                    binary_op!(Value::ValNumber, -);
+                    binary_op!(Value::ValNumber, -, frame);
                 }
                 OpCode::OpMultiply => {
-                    binary_op!(Value::ValNumber, *);
+                    binary_op!(Value::ValNumber, *, frame);
                 }
                 OpCode::OpDivide => {
-                    binary_op!(Value::ValNumber, /);
+                    binary_op!(Value::ValNumber, /, frame);
                 }
                 OpCode::OpTrue => {
                     self.stack.push(Value::ValBool(true))
@@ -256,10 +278,10 @@ impl VM {
                     self.stack.push(Value::ValBool(self.equals(a, b)));
                 }
                 OpCode::OpGreater => {
-                    binary_op!(Value::ValBool, >);
+                    binary_op!(Value::ValBool, >, frame);
                 }
                 OpCode::OpLess => {
-                    binary_op!(Value::ValBool, <);
+                    binary_op!(Value::ValBool, <, frame);
                 }
                 OpCode::OpJumpIfFalse(offset) => {
                     if self.is_falsey(self.stack.last().unwrap_or_else(|| { panic!("Stack is empty.") }).clone()) {
@@ -279,9 +301,17 @@ impl VM {
                 }
                 OpCode::OpCall(arg_count) => {
                     let callee = self.stack.get(self.stack.len() - 1 - arg_count).unwrap_or_else(|| { panic!("Couldn't get callee value!") }).clone();
-                    if !self.call_value(callee, frame, *arg_count) {
+                    let mut new_frame = frame.clone();
+                    if !self.call_value(callee, &mut new_frame, frame_count, *arg_count) {
                         return InterpretRuntimeError;
                     }
+
+                    if self.debug_level == DebugLevel::Verbose || self.debug_level == DebugLevel::BytecodeOnly {
+                        println!();
+                        println!("\x1B[32;1m------------------ {}({}) ------------------\x1B[0m", new_frame.function.name, new_frame.function.arity);
+                    }
+                    frames_mut.push(new_frame);
+
                     continue;
                 }
             };
@@ -290,18 +320,29 @@ impl VM {
         }
     }
 
-    fn call_value(&mut self, callee: Value, frame: &mut CallFrame, arg_count: usize) -> bool {
+    fn call_value(&mut self, callee: Value, frame: &mut CallFrame, frame_count: usize, arg_count: usize) -> bool {
         if let Value::ValFunction(func) = callee {
-            return self.call(func, frame, arg_count);
+            return self.call(func, frame, frame_count, arg_count);
         }
 
-        self.runtime_error("Can only call functions");
+        self.runtime_error("Can only call functions", frame);
         false
     }
 
-    fn call(&mut self, func: FunctionData, frame: &mut CallFrame, arg_count: usize) -> bool {
+    fn call(&mut self, func: FunctionData, frame: &mut CallFrame, frame_count: usize, arg_count: usize) -> bool {
+        if func.arity != arg_count {
+            self.runtime_error(format!("Expected {} arguments, but got {}", func.arity, arg_count).as_str(), frame);
+            return false;
+        }
+
+        if frame_count >= MAX_CALL_FRAME_DEPTH {
+            self.runtime_error("Stack overflow detected", frame);
+            return false;
+        }
+
         frame.function = func;
         frame.ip = 0;
+        frame.print_ip = 0;
         frame.stack_start = self.stack.len() - arg_count - 1;
         true
     }
@@ -325,10 +366,9 @@ impl VM {
         };
     }
 
-    pub fn runtime_error(&mut self, message: &str) {
+    pub fn runtime_error(&mut self, message: &str, frame: &mut CallFrame) {
         eprintln!("{}", message);
-
-        eprintln!("[line {}] in script", self.frames.borrow_mut().last().unwrap().function.chunk.get_line(self.frames.borrow_mut().last().unwrap().ip - 1));
+        eprintln!("[line {}] in script", frame.function.chunk.get_line(frame.ip - 1));
         self.stack = vec![];
     }
 }

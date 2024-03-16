@@ -366,7 +366,7 @@ impl<'a> Compiler<'a> {
             loop {
                 self.expression();
                 arg_count += 1;
-                if self.match_token(TokenType::RightParen) {
+                if !self.match_token(TokenType::Comma) {
                     break;
                 }
             }
@@ -492,6 +492,8 @@ impl<'a> Compiler<'a> {
             self.while_statement();
         } else if self.match_token(TokenType::For) {
             self.for_statement();
+        } else if self.match_token(TokenType::Return){
+          self.return_statement();
         } else {
             self.expression_statement();
         }
@@ -595,6 +597,20 @@ impl<'a> Compiler<'a> {
         }
 
         self.end_scope();
+    }
+
+    fn return_statement(&mut self) {
+        if self.function_type == FunctionType::Script {
+            self.parser.error(String::from("Can't return from top-level code"), self.source);
+        }
+
+        if self.match_token(TokenType::Semicolon) {
+            self.emit_return();
+        } else{
+            self.expression();
+            self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after return value"), self.scanner.clone());
+            self.emit_byte(OpCode::OpReturn);
+        }
     }
 
     fn emit_jump(&mut self, instruction: OpCode) -> usize {
@@ -800,6 +816,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn emit_return(&mut self) {
+        self.emit_byte(OpCode::OpNil);
         self.emit_byte(OpCode::OpReturn);
     }
 
