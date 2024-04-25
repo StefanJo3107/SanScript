@@ -1,0 +1,3 @@
+[submodule "san-vm"]
+	path = san-vm
+	url = https://github.com/StefanJo3107/SanVM
