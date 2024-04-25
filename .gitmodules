@@ -1,3 +1,6 @@
 [submodule "san-vm"]
 	path = san-vm
 	url = https://github.com/StefanJo3107/SanVM
+[submodule "san-common"]
+	path = san-common
+	url = https://github.com/StefanJo3107/SanCommon
