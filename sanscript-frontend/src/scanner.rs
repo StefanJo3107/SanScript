@@ -1,3 +1,4 @@
+use sanscript_common::keycodes::HID_KEY_STRINGS;
 use crate::token::{Token, TokenType};
 
 pub struct Scanner<'a> {
@@ -52,6 +53,11 @@ impl<'a> Scanner<'a> {
         }
 
         let c: char = self.advance();
+
+        if Scanner::is_capital(c) {
+            //TODO
+            return self.hid();
+        }
 
         if Scanner::is_alpha(c) {
             return self.identifier();
@@ -145,6 +151,10 @@ impl<'a> Scanner<'a> {
         return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
     }
 
+    pub fn is_capital(c: char) -> bool {
+        return c >= 'A' && c <= 'Z';
+    }
+
     pub fn make_token(&self, token_type: TokenType) -> Token {
         Token::new(token_type, self.start_index, self.current_index - self.start_index, self.line)
     }
@@ -153,12 +163,29 @@ impl<'a> Scanner<'a> {
         Token::new(TokenType::Error(message.to_string()), 0, message.len(), self.line)
     }
 
+    pub fn hid(&mut self) -> Token {
+        while Scanner::is_capital(self.peek()) || Scanner::is_digit(self.peek()) || self.peek().eq(&'_') {
+            self.advance();
+        }
+        self.make_token(self.hid_type())
+    }
+
     pub fn identifier(&mut self) -> Token {
         while Scanner::is_alpha(self.peek()) || Scanner::is_digit(self.peek()) {
             self.advance();
         }
 
         self.make_token(self.identifier_type())
+    }
+
+    pub fn hid_type(&self) -> TokenType {
+        for hid_key in HID_KEY_STRINGS {
+            if self.current_index - self.start_index == hid_key.len() && &self.source[self.start_index..self.current_index] == hid_key {
+                return TokenType::HidKey;
+            }
+        }
+
+        TokenType::Identifier
     }
 
     pub fn identifier_type(&self) -> TokenType {

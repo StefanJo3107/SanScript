@@ -1,3 +1,5 @@
+let key = ARROW_DOWN;
+
 fn funkcija(a, b){
     let c = a+b;
     print "function is called";
