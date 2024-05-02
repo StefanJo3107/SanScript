@@ -296,7 +296,6 @@ impl<'a> Compiler<'a> {
     }
 
     pub fn compile(&mut self) -> Option<FunctionData> {
-        self.scanner.clone().borrow_mut().tokenize_source();
         self.parser.advance(self.scanner.clone());
 
         while !self.match_token(TokenType::EOF) {

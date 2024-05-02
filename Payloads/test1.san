@@ -1,5 +1,3 @@
-let key = ARROW_DOWN;
-
 fn funkcija(a, b){
     let c = a+b;
     print "function is called";
@@ -33,6 +31,7 @@ if (prom == "chroono trigger"){
     print "Please stand up";
 }
 
+sleep(2);
 funkcija(2,3);
 
 {
