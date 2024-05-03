@@ -10,6 +10,7 @@ use std::cell::RefCell;
 use std::isize;
 use std::rc::Rc;
 use strum::EnumCount;
+use sanscript_common::keycodes::hid_string_to_code;
 
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
@@ -196,6 +197,12 @@ impl<'a> Compiler<'a> {
             None,
             Precedence::None
         );
+        add_table_entry!(
+            TokenType::HidKey,
+            Some(Compiler::hid_key),
+            None,
+            Precedence::None
+        );
         add_table_entry!(TokenType::And, None, Some(Compiler::and), Precedence::And);
         add_table_entry!(TokenType::Else, None, None, Precedence::None);
         add_table_entry!(
@@ -231,6 +238,7 @@ impl<'a> Compiler<'a> {
         add_table_entry!(error_token, None, None, Precedence::None);
         add_table_entry!(TokenType::EOF, None, None, Precedence::None);
     }
+
     pub fn new(source: &'a str, function_type: FunctionType) -> Compiler<'a> {
         let mut compiler = Compiler {
             parser: Parser::new(),
@@ -408,7 +416,7 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!"));
+            .expect("Parser does not have processed token!");
         return self.identifier_constant(identifier.clone());
     }
 
@@ -421,7 +429,7 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .expect("Parser does not have processed token!")
             .clone();
 
         for local in &self.locals {
@@ -475,7 +483,7 @@ impl<'a> Compiler<'a> {
         let local = self
             .locals
             .last_mut()
-            .unwrap_or_else(|| panic!("Locals array is empty!"));
+            .expect("Locals array is empty!");
         local.depth = self.scope_depth;
     }
 
@@ -492,8 +500,8 @@ impl<'a> Compiler<'a> {
             self.while_statement();
         } else if self.match_token(TokenType::For) {
             self.for_statement();
-        } else if self.match_token(TokenType::Return){
-          self.return_statement();
+        } else if self.match_token(TokenType::Return) {
+            self.return_statement();
         } else {
             self.expression_statement();
         }
@@ -606,7 +614,7 @@ impl<'a> Compiler<'a> {
 
         if self.match_token(TokenType::Semicolon) {
             self.emit_return();
-        } else{
+        } else {
             self.expression();
             self.parser.consume(TokenType::Semicolon, String::from("Expect ';' after return value"), self.scanner.clone());
             self.emit_byte(OpCode::OpReturn);
@@ -650,7 +658,7 @@ impl<'a> Compiler<'a> {
             if self
                 .locals
                 .get(i)
-                .unwrap_or_else(|| panic!("No local variable with given index"))
+                .expect("No local variable with given index")
                 .depth
                 >= self.scope_depth + 1
             {
@@ -685,7 +693,7 @@ impl<'a> Compiler<'a> {
             .parser
             .current
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have current token processed!"));
+            .expect("Parser does not have current token processed!");
         let current_type = current_token.token_type.clone();
         return current_type == token_type;
     }
@@ -719,7 +727,7 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .expect("Parser does not have processed token!")
             .token_type
             .clone()
             .into();
@@ -738,14 +746,14 @@ impl<'a> Compiler<'a> {
             .parser
             .current
             .as_ref()
-            .unwrap_or_else(|| panic!("No token has been processed!"))
+            .expect("No token has been processed!")
             .token_type
             .clone();
         let mut current_token_index: usize = current_token_type.clone().into();
         let mut current_token_precedence = self
             .rules
             .get(current_token_index)
-            .unwrap_or_else(|| panic!("No rule for token type: {}", current_token_type.clone()))
+            .expect(format!("No rule for token type: {:?}", current_token_type.clone()).as_str())
             .precedence;
 
         while precedence as usize <= current_token_precedence as usize {
@@ -754,7 +762,7 @@ impl<'a> Compiler<'a> {
                 .parser
                 .previous
                 .as_ref()
-                .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+                .expect("Parser does not have processed token!")
                 .token_type
                 .clone()
                 .into();
@@ -769,14 +777,14 @@ impl<'a> Compiler<'a> {
                 .parser
                 .current
                 .as_ref()
-                .unwrap_or_else(|| panic!("No token has been processed!"))
+                .expect("No token has been processed!")
                 .token_type
                 .clone();
             current_token_index = current_token_type.clone().into();
             current_token_precedence = self
                 .rules
                 .get(current_token_index)
-                .unwrap_or_else(|| panic!("No rule for token type: {}", current_token_type.clone()))
+                .expect(format!("No rule for token type: {:?}", current_token_type.clone()).as_str())
                 .precedence;
         }
 
@@ -795,7 +803,7 @@ impl<'a> Compiler<'a> {
         let parser_line = self.parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!")).line;
+            .expect("Parser does not have processed token!").line;
         self.get_chunk_mut().write_chunk(
             byte,
             parser_line,
@@ -807,7 +815,7 @@ impl<'a> Compiler<'a> {
             let parser_line = self.parser
                 .previous
                 .as_ref()
-                .unwrap_or_else(|| panic!("Parser does not have processed token!")).line;
+                .expect("Parser does not have processed token!").line;
             self.get_chunk_mut().write_chunk(
                 *byte,
                 parser_line,
@@ -835,11 +843,29 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .expect("Parser does not have processed token!")
             .get_token_string(self.source)
             .parse::<Number>()
             .unwrap_or_else(|_| panic!("Could not parse token value to number!"));
         self.emit_constant(Value::ValNumber(value));
+    }
+
+    fn hid_key(&mut self, _can_assign: bool) {
+        let value = self
+            .parser
+            .previous
+            .as_ref()
+            .expect("Parser does not have processed token!")
+            .get_token_string(self.source);
+        let hid_code = hid_string_to_code(&value);
+        if let Some(code) = hid_code {
+            self.emit_constant(Value::ValKey(vec![code]));
+        } else {
+            self.parser.error(
+                String::from(format!("Constant {} is not a valid HID key", value)),
+                self.source,
+            );
+        }
     }
 
     fn literal(&mut self, _can_assign: bool) {
@@ -847,7 +873,7 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("No token has been processed!"))
+            .expect("No token has been processed!")
             .token_type
             .clone();
 
@@ -864,7 +890,7 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .expect("Parser does not have processed token!")
             .get_token_string(self.source);
         let string_literal = &value[1..value.len() - 1].to_string();
         self.emit_constant(Value::ValString(string_literal.to_owned()));
@@ -884,7 +910,7 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("Parser does not have processed token!"))
+            .expect("Parser does not have processed token!")
             .token_type
             .clone();
 
@@ -902,14 +928,14 @@ impl<'a> Compiler<'a> {
             .parser
             .previous
             .as_ref()
-            .unwrap_or_else(|| panic!("No token has been processed!"))
+            .expect("No token has been processed!")
             .token_type
             .clone();
         let token_index: usize = operator_type.clone().into();
         let rule = self
             .rules
             .get(token_index)
-            .unwrap_or_else(|| panic!("No rule for token type: {}", operator_type.clone()));
+            .expect(format!("No rule for token type: {:?}", operator_type.clone()).as_str());
         let next_precedence: Option<Precedence> =
             num::FromPrimitive::from_usize((rule.precedence as usize) + 1);
         self.parse_precedence(next_precedence.unwrap());
@@ -952,7 +978,7 @@ impl<'a> Compiler<'a> {
             self.parser
                 .previous
                 .as_ref()
-                .unwrap_or_else(|| panic!("No token has been processed!"))
+                .expect("No token has been processed!")
                 .clone(),
             can_assign,
         );

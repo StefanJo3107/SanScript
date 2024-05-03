@@ -1,3 +1,6 @@
+let key = CTRL + ALT + T;
+print key;
+
 fn funkcija(a, b){
     let c = a+b;
     print "function is called";
