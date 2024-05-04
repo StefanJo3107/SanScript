@@ -1,5 +1,7 @@
-let key = CTRL + ALT + T;
-print key;
+let seq = CTRL + ALT + T | ENTER;
+let seq = seq | seq | seq | seq;
+let stringy = string_to_keys("curl") | string_to_keys(" ") | string_to_keys("https://www.youtube.com/");
+print stringy;
 
 fn funkcija(a, b){
     let c = a+b;
@@ -34,7 +36,7 @@ if (prom == "chroono trigger"){
     print "Please stand up";
 }
 
-sleep(2);
+sleep(500);
 funkcija(2,3);
 
 {

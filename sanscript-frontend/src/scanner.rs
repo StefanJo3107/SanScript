@@ -79,6 +79,7 @@ impl<'a> Scanner<'a> {
             '+' => return self.make_token(TokenType::Plus),
             '/' => return self.make_token(TokenType::Slash),
             '*' => return self.make_token(TokenType::Star),
+            '|' => return self.make_token(TokenType::Pipe),
             '!' => {
                 if self.match_next('=') {
                     return self.make_token(TokenType::BangEqual);

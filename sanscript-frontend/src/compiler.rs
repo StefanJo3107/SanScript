@@ -26,6 +26,8 @@ enum Precedence {
     // == !=
     Comparison,
     // > < >= <=
+    Pipe,
+    // |
     Term,
     // + -
     Factor,
@@ -135,6 +137,12 @@ impl<'a> Compiler<'a> {
             None,
             Some(Compiler::binary),
             Precedence::Factor
+        );
+        add_table_entry!(
+            TokenType::Pipe,
+            None,
+            Some(Compiler::binary),
+            Precedence::Pipe
         );
         add_table_entry!(
             TokenType::Bang,
@@ -945,6 +953,7 @@ impl<'a> Compiler<'a> {
             TokenType::Minus => self.emit_byte(OpCode::OpSubtract),
             TokenType::Star => self.emit_byte(OpCode::OpMultiply),
             TokenType::Slash => self.emit_byte(OpCode::OpDivide),
+            TokenType::Pipe => self.emit_byte(OpCode::OpPipe),
             TokenType::EqualEqual => self.emit_byte(OpCode::OpEqual),
             TokenType::BangEqual => self.emit_bytes(&[OpCode::OpEqual, OpCode::OpNot]),
             TokenType::Greater => self.emit_byte(OpCode::OpGreater),
