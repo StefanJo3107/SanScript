@@ -1,5 +1,10 @@
-let combo = GUI + ENTER;
-inject_keys(combo);
-sleep(500);
-let firefox_seq = string_to_keys("firefox https://www.youtube.com/watch?v=a5i-KdUQ47o") | ENTER;
+let apps = GUI + SPACE;
+inject_keys(apps);
+sleep(200);
+let open_firefox = string_to_keys("firefox") | ENTER;
+inject_sequence(open_firefox, 60, 10);
+sleep(1200);
+let firefox_seq = string_to_keys("https://www.youtube.com/watch?v=0tOXxuLcaog") | ENTER;
 inject_sequence(firefox_seq, 30, 0);
+sleep(2000);
+inject_keys(SPACE);
