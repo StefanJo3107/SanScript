@@ -1,0 +1,54 @@
+let seq = CTRL + ALT + T | ENTER;
+let seq = seq | seq | seq | seq;
+let stringy = string_to_keys("curl") | string_to_keys(" ") | string_to_keys("https://www.youtube.com/");
+print stringy;
+
+fn funkcija(a, b){
+    let c = a+b;
+    print "function is called";
+    print !(5 - 4 > 3 * 2 == !nil);
+    print c;
+    return c;
+}
+
+let prom = "chrono";
+let i = 0;
+
+while(i<5)
+{
+    print i;
+    i = i + 1;
+}
+
+for(let i = 5;i<10;i=i+1){
+    print i;
+}
+
+prom = prom + " trigger";
+print prom;
+
+if (prom == "chroono trigger"){
+    print "Hello";
+    print "World";
+} else if (prom == "chrono trigger" and 3<2){
+    print "Za warudo";
+} else {
+    print "Please stand up";
+}
+
+sleep(500);
+funkcija(2,3);
+
+{
+    let a = 3;
+    a = 4;
+    print a;
+    let b = 5;
+    {
+        let c = 25 + 4;
+        print c;
+    }
+    print b;
+    b = a;
+    print b;
+}

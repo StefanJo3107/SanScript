@@ -1,0 +1,5 @@
+let combo = GUI + ENTER;
+inject_keys(combo);
+sleep(500);
+let firefox_seq = string_to_keys("firefox https://www.youtube.com/watch?v=a5i-KdUQ47o") | ENTER;
+inject_sequence(firefox_seq, 30, 0);
