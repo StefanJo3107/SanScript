@@ -1,0 +1,5 @@
+let combo = CTRL + ALT + T;
+inject_keys(combo);
+sleep(2000);
+let firefox_seq = string_to_keys("firefox https://www.youtube.com/watch?v=dQw4w9WgXcQ") | ENTER;
+inject_sequence(firefox_seq, 30, 0);

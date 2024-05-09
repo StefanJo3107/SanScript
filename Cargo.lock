@@ -273,16 +273,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
 
 [[package]]
-name = "san_vm"
-version = "0.1.0"
-dependencies = [
- "postcard",
- "sanscript_common",
- "serde",
-]
-
-[[package]]
-name = "sanscript_common"
+name = "san_common"
 version = "0.1.0"
 dependencies = [
  "rand",
@@ -291,17 +282,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "sanscript_frontend"
+name = "san_compiler"
 version = "0.1.0"
 dependencies = [
  "num",
  "num-derive",
  "num-traits",
  "postcard",
- "sanscript_common",
+ "san_common",
  "serde",
  "strum",
  "strum_macros",
+]
+
+[[package]]
+name = "san_vm"
+version = "0.1.0"
+dependencies = [
+ "postcard",
+ "san_common",
+ "serde",
 ]
 
 [[package]]

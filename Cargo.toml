@@ -1,6 +1,10 @@
 [workspace]
 members = [
-    "sanscript-frontend",
+    "san-compiler",
     "san-vm",
     "san-common"
+]
+
+exclude = [
+    "san-usb"
 ]

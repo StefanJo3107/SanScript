@@ -1,12 +1,12 @@
 [package]
-name = "sanscript_frontend"
+name = "san_compiler"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sanscript_common = {path= "../san-common" }
+san_common = {path= "../san-common" }
 num-traits = "0.2"
 num-derive = "0.4.0"
 num = "0.4"

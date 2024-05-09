@@ -1,0 +1,10 @@
+let apps = GUI + SPACE;
+inject_keys(apps);
+sleep(200);
+let open_firefox = string_to_keys("firefox") | ENTER;
+inject_sequence(open_firefox, 60, 10);
+sleep(1200);
+let firefox_seq = string_to_keys("https://www.youtube.com/watch?v=dQw4w9WgXcQ") | ENTER;
+inject_sequence(firefox_seq, 30, 0);
+sleep(2000);
+inject_keys(SPACE);
