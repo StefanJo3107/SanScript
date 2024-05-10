@@ -4,7 +4,7 @@ use std::io;
 use std::io::{Read, Write};
 use std::process::exit;
 use postcard::to_allocvec;
-use sanscript_common::value::FunctionType;
+use san_common::value::FunctionType;
 use crate::compiler::Compiler;
 
 pub fn run() {

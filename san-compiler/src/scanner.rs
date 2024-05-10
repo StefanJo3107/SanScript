@@ -1,4 +1,4 @@
-use sanscript_common::keycodes::HID_KEY_STRINGS;
+use san_common::keycodes::HID_KEY_STRINGS;
 use crate::token::{Token, TokenType};
 
 pub struct Scanner<'a> {

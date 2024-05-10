@@ -3,14 +3,14 @@ use crate::scanner::Scanner;
 use crate::token::{Token, TokenType};
 use crate::ScannerRef;
 use num_derive::FromPrimitive;
-use sanscript_common::chunk::OpCode::OpConstant;
-use sanscript_common::chunk::{Chunk, OpCode};
-use sanscript_common::value::{FunctionData, FunctionType, Number, Value};
+use san_common::chunk::OpCode::OpConstant;
+use san_common::chunk::{Chunk, OpCode};
+use san_common::value::{FunctionData, FunctionType, Number, Value};
 use std::cell::RefCell;
 use std::isize;
 use std::rc::Rc;
 use strum::EnumCount;
-use sanscript_common::keycodes::hid_string_to_code;
+use san_common::keycodes::hid_string_to_code;
 
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
