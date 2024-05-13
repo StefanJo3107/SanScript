@@ -15,7 +15,7 @@ pub fn run() {
             exit(1);
         }
     } else {
-        eprintln!("Usage: SanScript [source path] [destination path]");
+        eprintln!("Usage: sanc <source path> <destination path>");
         exit(1);
     }
 }
