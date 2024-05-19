@@ -10,7 +10,7 @@ use std::cell::RefCell;
 use std::isize;
 use std::rc::Rc;
 use strum::EnumCount;
-use san_common::keycodes::hid_string_to_code;
+use san_common::keycodes::{hid_string_to_code, mouse_string_to_code};
 
 #[repr(usize)]
 #[derive(Copy, Clone, FromPrimitive)]
@@ -208,6 +208,12 @@ impl<'a> Compiler<'a> {
         add_table_entry!(
             TokenType::HidKey,
             Some(Compiler::hid_key),
+            None,
+            Precedence::None
+        );
+        add_table_entry!(
+            TokenType::MouseButton,
+            Some(Compiler::mouse_button),
             None,
             Precedence::None
         );
@@ -871,6 +877,24 @@ impl<'a> Compiler<'a> {
         } else {
             self.parser.error(
                 String::from(format!("Constant {} is not a valid HID key", value)),
+                self.source,
+            );
+        }
+    }
+
+    fn mouse_button(&mut self, _can_assign: bool) {
+        let value = self
+            .parser
+            .previous
+            .as_ref()
+            .expect("Parser does not have processed token!")
+            .get_token_string(self.source);
+        let mouse_code = mouse_string_to_code(&value);
+        if let Some(code) = mouse_code {
+            self.emit_constant(Value::ValMouseButton(code));
+        } else {
+            self.parser.error(
+                String::from(format!("Constant {} is not a valid mouse button", value)),
                 self.source,
             );
         }

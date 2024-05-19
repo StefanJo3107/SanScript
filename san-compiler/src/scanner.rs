@@ -1,4 +1,4 @@
-use san_common::keycodes::HID_KEY_STRINGS;
+use san_common::keycodes::{HID_KEY_STRINGS, MOUSE_BUTTON_STRINGS};
 use crate::token::{Token, TokenType};
 
 pub struct Scanner<'a> {
@@ -183,6 +183,12 @@ impl<'a> Scanner<'a> {
         for hid_key in HID_KEY_STRINGS {
             if self.current_index - self.start_index == hid_key.len() && &self.source[self.start_index..self.current_index] == hid_key {
                 return TokenType::HidKey;
+            }
+        }
+
+        for mouse_key in MOUSE_BUTTON_STRINGS {
+            if self.current_index - self.start_index == mouse_key.len() && &self.source[self.start_index..self.current_index] == mouse_key {
+                return TokenType::MouseButton;
             }
         }
 

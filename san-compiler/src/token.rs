@@ -33,6 +33,7 @@ pub enum TokenType {
     String,
     Number,
     HidKey,
+    MouseButton,
 
     //keywords
     And,
@@ -62,12 +63,12 @@ impl Into<usize> for TokenType {
         let mut value = 1;
         for token in TokenType::iter() {
             if self == token {
-                return value
+                return value;
             }
             value += 1;
         }
 
-        return 0
+        return 0;
     }
 }
 
