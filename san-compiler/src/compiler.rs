@@ -347,7 +347,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn function(&mut self, function_type: FunctionType) {
-        let mut compiler = Compiler::new_from_existing(self.parser.clone(), self.scanner.clone(), self.source.clone(), function_type);
+        let mut compiler = Compiler::new_from_existing(self.parser.clone(), self.scanner.clone(), self.source, function_type);
 
         compiler.begin_scope();
         compiler.parser.consume(TokenType::LeftParen, String::from("Expect '(' after function name"), self.scanner.clone());
@@ -644,9 +644,9 @@ impl<'a> Compiler<'a> {
         let jump = self.get_chunk().len() - address - 1;
         let new_code = match self.get_chunk().get_code(address)
         {
-            OpCode::OpJumpIfFalse(value) => Some(OpCode::OpJumpIfFalse(jump)),
-            OpCode::OpJumpIfTrue(value) => Some(OpCode::OpJumpIfTrue(jump)),
-            OpCode::OpJump(value) => Some(OpCode::OpJump(jump)),
+            OpCode::OpJumpIfFalse(_) => Some(OpCode::OpJumpIfFalse(jump)),
+            OpCode::OpJumpIfTrue(_) => Some(OpCode::OpJumpIfTrue(jump)),
+            OpCode::OpJump(_) => Some(OpCode::OpJump(jump)),
             _ => None,
         };
 
