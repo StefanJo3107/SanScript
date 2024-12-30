@@ -1,0 +1,10 @@
+let win_run = GUI + R;
+inject_keys(win_run);
+sleep(2000);
+let open_chrome = string_to_keys("chrome") | ENTER;
+inject_sequence(open_chrome, 60, 10);
+sleep(3000);
+let chrome_seq = string_to_keys("https://www.youtube.com/watch?v=0tOXxuLcaog") | ENTER;
+inject_sequence(chrome_seq, 30, 0);
+sleep(3000);
+inject_keys(SPACE);
