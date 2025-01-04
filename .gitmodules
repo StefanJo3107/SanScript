@@ -6,4 +6,4 @@
 	url = https://github.com/StefanJo3107/SanCommon
 [submodule "san-usb"]
 	path = san-usb
-	url = https://github.com/StefanJo3107/SanUSB.git
+	url = https://github.com/StefanJo3107/SanUSB
