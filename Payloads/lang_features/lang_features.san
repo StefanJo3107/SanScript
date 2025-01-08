@@ -3,7 +3,7 @@ let seq = seq | seq | seq | seq;
 let stringy = string_to_keys("curl") | string_to_keys(" ") | string_to_keys("https://www.youtube.com/");
 print stringy;
 
-fn funkcija(a, b){
+fn function(a, b){
     let c = a+b;
     print "function is called";
     print !(5 - 4 > 3 * 2 == !nil);
@@ -11,7 +11,7 @@ fn funkcija(a, b){
     return c;
 }
 
-let prom = "chrono";
+let var = "chrono";
 let i = 0;
 
 while(i<5)
@@ -24,19 +24,19 @@ for(let i = 5;i<10;i=i+1){
     print i;
 }
 
-prom = prom + " trigger";
-print prom;
+var = var + " trigger";
+print var;
 
-if (prom == "chroono trigger"){
+if (var == "chroono trigger"){
     print "if";
-} else if (prom == "chrono trigger" and 3<2){
+} else if (var == "chrono trigger" and 3<2){
     print "else if";
 } else {
     print "else";
 }
 
 sleep(500);
-funkcija(2,3);
+function(2,3);
 
 {
     let a = 3;

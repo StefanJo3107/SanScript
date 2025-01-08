@@ -1,4 +1,4 @@
-mode="auto"
+mode="remote"
 ssid="ssid"
 password="pass"
 server_addr="addr"
